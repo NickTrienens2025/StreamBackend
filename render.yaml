@@ -1,0 +1,32 @@
+services:
+  # GetStream Activity Feeds API
+  - type: web
+    name: getstream-api
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: STREAM_API_KEY
+        sync: false
+      - key: STREAM_API_SECRET
+        sync: false
+      - key: STREAM_APP_ID
+        sync: false
+      - key: DEFAULT_FEED_GROUP
+        value: goals
+      - key: CENTRAL_FEED_ID
+        value: nhl
+      - key: API_PREFIX
+        value: /api/v1
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: DEBUG
+        value: false
+      - key: DEFAULT_LIMIT
+        value: 50
+      - key: MAX_LIMIT
+        value: 1000
+    healthCheckPath: /health
+    autoDeploy: true
