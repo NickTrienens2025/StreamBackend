@@ -185,13 +185,15 @@
                 const awayScore = details.away_score || activity.away_score || 0;
                 const timeRemaining = details.time_remaining || '';
                 const period = details.period || '';
+                const gameId = details.game_id || activity.game_id;
 
                 // Construct logo URLs
                 const homeLogo = `https://assets.nhle.com/logos/nhl/svg/${homeTeam}_light.svg`;
                 const awayLogo = `https://assets.nhle.com/logos/nhl/svg/${awayTeam}_light.svg`;
+                const gameUrl = gameId ? `https://www.nhl.com/gamecenter/${gameId}` : '#';
 
                 return `
-                <div class="activity-card">
+                <div class="activity-card" onclick="window.open('${gameUrl}', '_blank')" style="cursor: pointer;">
                     <div class="game-header">
                         <span class="game-status">Period ${period} - ${timeRemaining}</span>
                         <span class="activity-time">${new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
