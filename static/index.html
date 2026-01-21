@@ -359,14 +359,14 @@
                 const isAwayScoring = scoringTeam === awayTeam;
 
                 return `
-                <div class="activity-card" onclick="window.open('${gameUrl}', '_blank')">
+                <div class="activity-card">
                     <div class="game-header">
                         <span class="game-status">Period ${period} - ${timeRemaining}</span>
                         <span class="activity-time">${new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     
-                    <div class="teams-container">
-                        <div class="team">
+                    <div class="teams-container" style="margin-bottom: 12px;">
+                        <div class="team ${isAwayScoring ? 'scoring-team' : ''}">
                             <img src="${awayLogo}" alt="${awayTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
                             <div class="team-code">${awayTeam}</div>
                             <div class="team-score ${awayScore > homeScore ? 'winning' : ''}">${awayScore}</div>
@@ -374,7 +374,7 @@
                         
                         <div class="vs-divider">@</div>
                         
-                        <div class="team">
+                        <div class="team ${isHomeScoring ? 'scoring-team' : ''}">
                             <img src="${homeLogo}" alt="${homeTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
                             <div class="team-code">${homeTeam}</div>
                             <div class="team-score ${homeScore > awayScore ? 'winning' : ''}">${homeScore}</div>
@@ -401,7 +401,7 @@
 
                     </div>
 
-                    <div class="card-actions">
+                    <div class="card-actions" style="margin-top: 8px; padding-top: 8px;">
                          <button 
                             id="like-btn-${activity.id}"
                             class="action-btn like-btn ${isLiked ? 'liked' : ''}" 
@@ -413,7 +413,9 @@
                             </svg>
                             <span id="like-count-${activity.id}" class="count">${likeCount > 0 ? likeCount : ''}</span>
                         </button>
-                        <div class="tap-hint-small">Tap card for Replay</div>
+                        <a href="${gameUrl}" target="_blank" class="action-btn" style="text-decoration: none; color: #007bff; font-weight: 500;">
+                            GameCenter &rarr;
+                        </a>
                     </div>
                 </div>
             `;
