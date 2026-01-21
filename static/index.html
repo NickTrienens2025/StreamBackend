@@ -27,9 +27,9 @@
         .activity-card {
             background: white;
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
             transition: transform 0.2s ease;
         }
 
@@ -65,10 +65,23 @@
         }
 
         .team-logo {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             object-fit: contain;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .team.scoring-team .team-logo {
+            width: 80px;
+            height: 80px;
+            opacity: 1;
+        }
+
+        .team.scoring-team .team-code {
+            font-size: 1.2em;
+            color: #000;
         }
 
         .team-code {
@@ -211,7 +224,13 @@
             try {
                 // 1. Get Default User & Token
                 status.textContent = 'Authenticating...';
-                const authRes = await fetch(`${API_PREFIX}/auth/default-user`);
+
+                // Check if URL path is a user route (e.g. /user1)
+                const path = window.location.pathname;
+                const userMatch = path.match(/^\/(user\d+)$/);
+                const aliasStr = userMatch ? `?alias=${userMatch[1]}` : '';
+
+                const authRes = await fetch(`${API_PREFIX}/auth/default-user${aliasStr}`);
                 const authData = await authRes.json();
 
                 if (!authData.success) throw new Error('Failed to authenticate');

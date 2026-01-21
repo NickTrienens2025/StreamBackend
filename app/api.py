@@ -13,17 +13,19 @@ router = APIRouter()
 
 
 @router.get("/auth/default-user")
-async def get_default_user():
+async def get_default_user(alias: Optional[str] = Query(None, description="User alias (e.g., user1)")):
     """
     Get or create a persistent default user
     """
     try:
-        user_data = await s3_storage.read('default_user.json')
+        filename = f"user_{alias}.json" if alias else "default_user.json"
+        user_data = await s3_storage.read(filename)
         
         if not user_data:
-            user_id = f"web-guest-{uuid.uuid4().hex[:8]}"
+            prefix = f"web-{alias}-" if alias else "web-guest-"
+            user_id = f"{prefix}{uuid.uuid4().hex[:8]}"
             user_data = {"user_id": user_id}
-            await s3_storage.write('default_user.json', user_data)
+            await s3_storage.write(filename, user_data)
         
         user_id = user_data["user_id"]
         token = stream_client.create_user_token(user_id)

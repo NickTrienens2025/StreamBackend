@@ -52,6 +52,16 @@ async def root():
     return FileResponse('static/index.html')
 
 
+# Serve index.html for user routes for testing
+@app.get("/user1")
+@app.get("/user2")
+@app.get("/user3")
+async def user_root():
+    """Serve index.html for specific users"""
+    from fastapi.responses import FileResponse
+    return FileResponse('static/index.html')
+
+
 # Include API router
 app.include_router(api_router, prefix=settings.API_PREFIX)
 
