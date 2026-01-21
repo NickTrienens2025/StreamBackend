@@ -26,10 +26,10 @@
 
         .activity-card {
             background: white;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 12px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             transition: transform 0.2s ease;
         }
 
@@ -42,8 +42,8 @@
             display: flex;
             justify-content: space-between;
             color: #666;
-            font-size: 0.85em;
-            margin-bottom: 15px;
+            font-size: 0.75em;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 600;
@@ -53,8 +53,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 0 10px;
+            margin-bottom: 10px;
+            padding: 0 5px;
         }
 
         .team {
@@ -65,17 +65,17 @@
         }
 
         .team-logo {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
             object-fit: contain;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             opacity: 0.7;
             transition: all 0.3s ease;
         }
 
         .team.scoring-team .team-logo {
-            width: 80px;
-            height: 80px;
+            width: 50px;
+            height: 50px;
             opacity: 1;
         }
 
@@ -91,7 +91,7 @@
         }
 
         .team-score {
-            font-size: 2em;
+            font-size: 1.5em;
             font-weight: 700;
             color: #333;
         }
@@ -110,7 +110,7 @@
         .event-details {
             text-align: center;
             border-top: 1px solid #eee;
-            padding-top: 15px;
+            padding-top: 10px;
         }
 
         .event-title {
@@ -119,7 +119,8 @@
             /* Goal red */
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+            font-size: 0.9em;
         }
 
         .event-description {
@@ -136,8 +137,8 @@
         }
 
         .player-headshot {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #ddd;
@@ -154,7 +155,7 @@
         }
 
         .scorer-name {
-            font-size: 1.4em;
+            font-size: 1.1em;
             font-weight: 800;
             color: #111;
         }
@@ -173,11 +174,11 @@
         }
 
         .assists-section {
-            margin-top: 12px;
-            padding: 10px;
+            margin-top: 6px;
+            padding: 6px 8px;
             background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 0.9em;
+            border-radius: 6px;
+            font-size: 0.85em;
         }
 
         .assist-player {
@@ -221,9 +222,46 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-top: 15px;
-            padding-top: 10px;
+            margin-top: 8px;
+            padding-top: 6px;
             border-top: 1px solid #f0f0f0;
+        }
+
+        .json-toggle {
+            background: #f0f2f5;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.75em;
+            color: #666;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .json-toggle:hover {
+            background: #e4e6eb;
+        }
+
+        .json-container {
+            margin-top: 8px;
+            padding: 8px;
+            background: #1e1e1e;
+            border-radius: 6px;
+            overflow-x: auto;
+            display: none;
+        }
+
+        .json-container.visible {
+            display: block;
+        }
+
+        .json-content {
+            color: #d4d4d4;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.75em;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
 
         .action-btn {
@@ -372,6 +410,18 @@
             }
         }
 
+        function toggleJSON(activityId) {
+            const container = document.getElementById(`json-${activityId}`);
+            const btn = document.getElementById(`json-btn-${activityId}`);
+            if (container.classList.contains('visible')) {
+                container.classList.remove('visible');
+                btn.textContent = 'View JSON';
+            } else {
+                container.classList.add('visible');
+                btn.textContent = 'Hide JSON';
+            }
+        }
+
         function renderActivities(activities) {
             const container = document.getElementById('feed-container');
             container.innerHTML = activities.map(activity => {
@@ -392,14 +442,17 @@
                 const period = details.period || '';
                 const gameId = details.game_id || activity.game_id;
 
-                // Scorer Details
-                const scoringTeam = details.scoring_team || activity.scoring_team || '';
-                const scorerName = details.scoring_player_name || details.scoring_player || activity.scoring_player_name || 'Unknown';
-                const scorerHeadshot = activity.scoring_player_headshot || '';
-                const scorerPosition = activity.scoring_player_position || '';
-                const scorerSweater = activity.scoring_player_sweater || '';
-                const shotType = details.shot_type || activity.shot_type || '';
-                const goalType = details.goal_type || activity.goal_type || '';
+                // Debug: Log activity to see what we have
+                console.log('Activity data:', activity);
+
+                // Scorer Details - check both root and enriched object
+                const scoringTeam = activity.scoring_team || details.scoring_team || '';
+                const scorerName = activity.scoring_player_name || details.scoring_player_name || details.scoring_player || 'Unknown';
+                const scorerHeadshot = activity.scoring_player_headshot || null;
+                const scorerPosition = activity.scoring_player_position || null;
+                const scorerSweater = activity.scoring_player_sweater || null;
+                const shotType = activity.shot_type || details.shot_type || '';
+                const goalType = activity.goal_type || details.goal_type || '';
 
                 // Assists
                 const primaryAssist = activity.primary_assist_name || null;
@@ -517,9 +570,9 @@
                     </div>
 
                     <div class="card-actions" style="margin-top: 8px; padding-top: 8px;">
-                         <button 
+                         <button
                             id="like-btn-${activity.id}"
-                            class="action-btn like-btn ${isLiked ? 'liked' : ''}" 
+                            class="action-btn like-btn ${isLiked ? 'liked' : ''}"
                             onclick="toggleLike('${activity.id}', event)"
                             data-reaction-id="${reactionId}"
                          >
@@ -528,9 +581,20 @@
                             </svg>
                             <span id="like-count-${activity.id}" class="count">${likeCount > 0 ? likeCount : ''}</span>
                         </button>
+                        <button
+                            id="json-btn-${activity.id}"
+                            class="json-toggle"
+                            onclick="toggleJSON('${activity.id}')"
+                        >
+                            View JSON
+                        </button>
                         <a href="${gameUrl}" target="_blank" class="action-btn" style="text-decoration: none; color: #007bff; font-weight: 500;">
                             GameCenter &rarr;
                         </a>
+                    </div>
+
+                    <div id="json-${activity.id}" class="json-container">
+                        <div class="json-content">${JSON.stringify(activity, null, 2)}</div>
                     </div>
                 </div>
             `;
