@@ -106,7 +106,8 @@ Get activities from a specific feed.
 - `feed_group` - Feed group name (default: from config)
 - `limit` - Number of activities (default: 50, max: 1000)
 - `offset` - Pagination offset (default: 0)
-- `enrich` - Enrich with collections (default: true)
+
+**Note:** All activities are automatically enriched with full Collection data
 
 **Example:**
 ```bash

@@ -53,7 +53,7 @@ async def get_feed_activities(
     feed_group: str = Query(settings.DEFAULT_FEED_GROUP, description="Feed group name"),
     limit: int = Query(settings.DEFAULT_LIMIT, ge=1, le=settings.MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    enrich: bool = Query(True, description="Enrich activities with referenced objects")
+    enrich: bool = True  # Always enrich - full data with collections
 ):
     """
     Get activities from a specific feed
@@ -96,7 +96,7 @@ async def get_recent_activities(
     limit: int = Query(20, ge=1, le=100)
 ):
     """
-    Get recent activities from the central feed
+    Get recent activities from the central feed (always enriched with full data)
 
     **Example:**
     - `GET /api/v1/activities/recent` - Get 20 most recent activities
@@ -106,8 +106,7 @@ async def get_recent_activities(
         feed_id=feed_id,
         feed_group=feed_group,
         limit=limit,
-        offset=0,
-        enrich=True
+        offset=0
     )
 
 
@@ -120,19 +119,19 @@ async def filter_activities(
     limit: int = Query(50, ge=1, le=settings.MAX_LIMIT)
 ):
     """
-    Get activities with client-side filtering
+    Get activities with client-side filtering (always enriched with full data)
 
     **Example:**
     - `GET /api/v1/activities/filter?tag=game-winner` - Game-winning activities
     - `GET /api/v1/activities/filter?filter_tag=COL` - Activities by team COL
     """
     try:
-        # Fetch activities
+        # Fetch activities with full enrichment
         result = await stream_client.get_activities(
             feed_group=feed_group,
             feed_id=feed_id,
             limit=limit * 2,  # Fetch more to filter client-side
-            enrich=True
+            enrich=True  # Always enrich
         )
 
         activities = result.get('results', [])
@@ -174,7 +173,7 @@ async def get_feed_stats(
     limit: int = Query(1000, ge=1, le=settings.MAX_LIMIT)
 ):
     """
-    Get aggregated statistics for a feed
+    Get aggregated statistics for a feed (enriched for complete data)
 
     **Example:**
     - `GET /api/v1/feeds/nhl/stats` - League-wide statistics
@@ -185,7 +184,7 @@ async def get_feed_stats(
             feed_group=feed_group,
             feed_id=feed_id,
             limit=limit,
-            enrich=False
+            enrich=True  # Always enrich for complete stats
         )
 
         activities = result.get('results', [])
