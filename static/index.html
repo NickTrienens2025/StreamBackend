@@ -114,6 +114,48 @@
             line-height: 1.4;
         }
 
+        .scorer-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 15px;
+        }
+
+        .scorer-team-logo {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .scorer-text {
+            text-align: left;
+        }
+
+        .scorer-name {
+            font-size: 1.4em;
+            font-weight: 800;
+            color: #111;
+        }
+
+        .goal-context {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: capitalize;
+        }
+
+        .tap-hint {
+            margin-top: 15px;
+            font-size: 0.8em;
+            color: #007bff;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .activity-card {
+            cursor: pointer;
+        }
+
         #status {
             text-align: center;
             margin-bottom: 20px;
@@ -187,13 +229,21 @@
                 const period = details.period || '';
                 const gameId = details.game_id || activity.game_id;
 
+                // Scorer Details
+                const scoringTeam = details.scoring_team || activity.scoring_team || '';
+                const scorerName = details.scoring_player_name || details.scoring_player || activity.scoring_player_name || 'Unknown';
+                const shotType = details.shot_type || activity.shot_type || '';
+                const goalType = details.goal_type || activity.goal_type || '';
+
                 // Construct logo URLs
                 const homeLogo = `https://assets.nhle.com/logos/nhl/svg/${homeTeam}_light.svg`;
                 const awayLogo = `https://assets.nhle.com/logos/nhl/svg/${awayTeam}_light.svg`;
+                const scoringTeamLogo = scoringTeam ? `https://assets.nhle.com/logos/nhl/svg/${scoringTeam}_light.svg` : null;
+
                 const gameUrl = gameId ? `https://www.nhl.com/gamecenter/${gameId}` : '#';
 
                 return `
-                <div class="activity-card" onclick="window.open('${gameUrl}', '_blank')" style="cursor: pointer;">
+                <div class="activity-card" onclick="window.open('${gameUrl}', '_blank')">
                     <div class="game-header">
                         <span class="game-status">Period ${period} - ${timeRemaining}</span>
                         <span class="activity-time">${new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -216,9 +266,24 @@
                     </div>
 
                     <div class="event-details">
-                        <div class="event-title">${activity.verb === 'score' ? 'GOAL!' : activity.verb.toUpperCase()}</div>
-                        <div class="event-description">
-                            ${details.description || activity.object}
+                        <div class="event-title">GOAL!</div>
+                        
+                        ${scoringTeam ? `
+                            <div class="scorer-info">
+                                <img src="${scoringTeamLogo}" class="scorer-team-logo" alt="${scoringTeam}">
+                                <div class="scorer-text">
+                                    <div class="scorer-name">${scorerName}</div>
+                                    <div class="goal-context">${shotType} ${goalType ? `(${goalType})` : ''}</div>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="event-description">
+                                ${details.description || activity.object}
+                            </div>
+                        `}
+                        
+                        <div class="tap-hint">
+                            Tap to view Replay on NHL.com
                         </div>
                     </div>
                 </div>
