@@ -354,6 +354,10 @@
 
                 const gameUrl = gameId ? `https://www.nhl.com/gamecenter/${gameId}` : '#';
 
+                // Check which team scored to highlight
+                const isHomeScoring = scoringTeam === homeTeam;
+                const isAwayScoring = scoringTeam === awayTeam;
+
                 return `
                 <div class="activity-card" onclick="window.open('${gameUrl}', '_blank')">
                     <div class="game-header">
