@@ -42,7 +42,7 @@ class S3Storage:
 
             print(f"📤 Writing to S3: {key}")
 
-            response = await self.client.post(
+            response = await self.client.put(
                 url,
                 content=body,
                 headers={"Content-Type": "application/json"}

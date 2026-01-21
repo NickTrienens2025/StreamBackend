@@ -177,6 +177,18 @@ class StreamClient:
         feed = self.get_feed(feed_group, feed_id)
         feed.follow(target_feed_group, target_feed_id)
 
+    def create_user_token(self, user_id: str) -> str:
+        """
+        Create a user token for client-side authentication
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            JWT user token
+        """
+        return self.client.create_user_token(user_id)
+
 
 # Singleton client instance
 stream_client = StreamClient()

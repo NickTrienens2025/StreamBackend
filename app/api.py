@@ -7,8 +7,42 @@ from typing import Optional, List
 from app.stream_client import stream_client
 from app.s3_storage import s3_storage
 from app.config import settings
+import uuid
 
 router = APIRouter()
+
+
+@router.get("/auth/default-user")
+async def get_default_user():
+    """
+    Get or create a persistent default user
+    """
+    try:
+        user_data = await s3_storage.read('default_user.json')
+        
+        if not user_data:
+            user_id = f"web-guest-{uuid.uuid4().hex[:8]}"
+            user_data = {"user_id": user_id}
+            await s3_storage.write('default_user.json', user_data)
+        
+        user_id = user_data["user_id"]
+        token = stream_client.create_user_token(user_id)
+        
+        # Ensure user follows the default feed
+        try:
+            stream_client.follow_feed("user", user_id, "goals", "COL")
+        except:
+            pass # Ignore if already following
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "token": token,
+            "api_key": settings.STREAM_API_KEY,
+            "app_id": settings.STREAM_APP_ID
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get default user: {str(e)}")
 
 
 @router.get("/feeds/{feed_id}/activities")
