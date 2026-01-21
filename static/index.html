@@ -144,26 +144,51 @@
             text-transform: capitalize;
         }
 
-        .tap-hint {
+        .card-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-top: 15px;
-            font-size: 0.8em;
-            color: #007bff;
-            font-weight: 600;
-            opacity: 0.8;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
         }
 
-        .activity-card {
+        .action-btn {
+            background: none;
+            border: none;
             cursor: pointer;
-        }
-
-        #status {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             color: #666;
             font-size: 0.9em;
-            background: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
             border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #f7f7f7;
+        }
+
+        .like-btn.liked {
+            color: #e0245e;
+            fill: #e0245e;
+        }
+
+        .like-btn.liked svg {
+            fill: #e0245e;
+            stroke: #e0245e;
+        }
+
+        .count {
+            font-weight: 600;
+        }
+
+        .tap-hint-small {
+            font-size: 0.75em;
+            color: #999;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -177,6 +202,8 @@
         const API_PREFIX = '/api/v1';
         const USER_ID = 'demo-user';
         const TARGET_FEED = { group: 'goals', id: 'COL' };
+
+        let client; // Helper to access stream client globally
 
         async function init() {
             const status = document.getElementById('status');
@@ -193,12 +220,13 @@
 
                 // 2. Connect to Stream
                 status.textContent = 'Connecting to Stream...';
-                const client = stream.connect(api_key, token, app_id);
+                client = stream.connect(api_key, token, app_id);
                 const userFeed = client.feed('user', user_id);
 
                 // 3. Fetch Activities
                 status.textContent = 'Loading activities...';
-                const results = await userFeed.get({ limit: 20, enrich: true });
+                // Enrich: true is required to get reaction counts and own_reactions
+                const results = await userFeed.get({ limit: 20, enrich: true, reactions: { own: true, counts: true, recent: true } });
 
                 renderActivities(results.results);
                 status.textContent = `Connected as ${user_id}. Following ${TARGET_FEED.group}:${TARGET_FEED.id}`;
@@ -206,6 +234,62 @@
             } catch (err) {
                 status.textContent = `Error: ${err.message}`;
                 console.error(err);
+            }
+        }
+
+        async function toggleLike(activityId, event) {
+            event.stopPropagation(); // prevent card click
+            if (!client) return;
+
+            const btn = document.getElementById(`like-btn-${activityId}`);
+            const countSpan = document.getElementById(`like-count-${activityId}`);
+            const isLiked = btn.classList.contains('liked');
+
+            // Optimistic UI update
+            const newCount = parseInt(countSpan.textContent) + (isLiked ? -1 : 1);
+            countSpan.textContent = newCount > 0 ? newCount : '';
+            btn.classList.toggle('liked');
+
+            try {
+                if (isLiked) {
+                    // Find own reaction to delete (simplified: assumes most recent like is ours or we store ID)
+                    // For robust impl, we should store reaction ID on the element. 
+                    // But Stream allows deleting by activity_id + type for current user in some SDKs, 
+                    // or we iterate `own_reactions`. 
+                    // Here we will use the `own_reactions` map checked during render.
+
+                    // Since we don't have the reaction ID easily accessible in this simple view without re-fetching,
+                    // we might check if the SDK supports 'toggle' or we need to look it up.
+                    // For this demo, let's fetch the reaction ID from the element attribute if possible.
+
+                    // Actually, simpler approach for demo: just call API. 
+                    // Note: Deleting requires reaction ID.
+                    // Let's rely on re-fetching or look up the reaction ID from a datastore.
+                    // A proper SPA would store this in state.
+
+                    // Workaround: We will use the 'kind' and 'activity' to search or simpler: 
+                    // client.reactions.delete(reactionId)
+                    // We need the reaction ID. Let's start with ADD only or try to find it.
+
+                    // Better approach for this vanilla JS demo:
+                    // Store the reaction ID in distinct data attribute when rendering!
+                    const reactionId = btn.dataset.reactionId;
+                    if (reactionId) {
+                        await client.reactions.delete(reactionId);
+                        btn.removeAttribute('data-reaction-id');
+                    } else {
+                        // Fallback or error if we desync
+                        console.warn("No reaction ID found to delete");
+                    }
+                } else {
+                    const response = await client.reactions.add('like', activityId);
+                    btn.dataset.reactionId = response.id;
+                }
+            } catch (e) {
+                console.error("Reaction error", e);
+                // Revert on error
+                countSpan.textContent = parseInt(countSpan.textContent) + (isLiked ? 1 : -1);
+                btn.classList.toggle('liked');
             }
         }
 
@@ -234,6 +318,15 @@
                 const scorerName = details.scoring_player_name || details.scoring_player || activity.scoring_player_name || 'Unknown';
                 const shotType = details.shot_type || activity.shot_type || '';
                 const goalType = details.goal_type || activity.goal_type || '';
+
+                // Reaction Data
+                const reactionCounts = activity.reaction_counts || {};
+                const likeCount = reactionCounts.like || 0;
+
+                const ownReactions = activity.own_reactions || {};
+                const myLikes = ownReactions.like || [];
+                const isLiked = myLikes.length > 0;
+                const reactionId = isLiked ? myLikes[0].id : '';
 
                 // Construct logo URLs
                 const homeLogo = `https://assets.nhle.com/logos/nhl/svg/${homeTeam}_light.svg`;
@@ -282,9 +375,22 @@
                             </div>
                         `}
                         
-                        <div class="tap-hint">
-                            Tap to view Replay on NHL.com
-                        </div>
+
+                    </div>
+
+                    <div class="card-actions">
+                         <button 
+                            id="like-btn-${activity.id}"
+                            class="action-btn like-btn ${isLiked ? 'liked' : ''}" 
+                            onclick="toggleLike('${activity.id}', event)"
+                            data-reaction-id="${reactionId}"
+                         >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                            <span id="like-count-${activity.id}" class="count">${likeCount > 0 ? likeCount : ''}</span>
+                        </button>
+                        <div class="tap-hint-small">Tap card for Replay</div>
                     </div>
                 </div>
             `;
