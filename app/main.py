@@ -5,6 +5,7 @@ Platform-agnostic backend for GetStream Activity Feeds
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.api import router as api_router
 
@@ -28,6 +29,10 @@ app.add_middleware(
 )
 
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -42,22 +47,9 @@ async def health_check():
 # Root endpoint
 @app.get("/")
 async def root():
-    """Root endpoint with API information"""
-    return {
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-        "docs": "/docs",
-        "api_prefix": settings.API_PREFIX,
-        "endpoints": {
-            "health": "/health",
-            "feeds": f"{settings.API_PREFIX}/feeds/{{feed_id}}/activities",
-            "recent": f"{settings.API_PREFIX}/activities/recent",
-            "filter": f"{settings.API_PREFIX}/activities/filter",
-            "stats": f"{settings.API_PREFIX}/feeds/{{feed_id}}/stats",
-            "token": f"{settings.API_PREFIX}/token/{{feed_id}}",
-            "collections": f"{settings.API_PREFIX}/collections/{{collection_name}}"
-        }
-    }
+    """Serve index.html"""
+    from fastapi.responses import FileResponse
+    return FileResponse('static/index.html')
 
 
 # Include API router

@@ -213,6 +213,36 @@ async def get_feed_token(
         raise HTTPException(status_code=500, detail=f"Failed to generate token: {str(e)}")
 
 
+@router.post("/feeds/{feed_id}/follow")
+async def follow_feed(
+    feed_id: str = Path(..., description="Source Feed ID"),
+    feed_group: str = Query("user", description="Source Feed Group"),
+    target_feed_group: str = Query(..., description="Target Feed Group"),
+    target_feed_id: str = Query(..., description="Target Feed ID")
+):
+    """
+    Follow a target feed
+
+    **Example:**
+    - `POST /api/v1/feeds/user123/follow?target_feed_group=goals&target_feed_id=COL`
+    """
+    try:
+        stream_client.follow_feed(
+            feed_group=feed_group,
+            feed_id=feed_id,
+            target_feed_group=target_feed_group,
+            target_feed_id=target_feed_id
+        )
+
+        return {
+            "success": True,
+            "message": f"{feed_group}:{feed_id} is now following {target_feed_group}:{target_feed_id}"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to follow feed: {str(e)}")
+
+
 @router.get("/collections/{collection_name}")
 async def get_collection_objects(
     collection_name: str = Path(..., description="Collection name"),

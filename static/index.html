@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Feed Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/getstream/dist/js_min/getstream.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .activity { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
+        .activity-header { font-weight: bold; margin-bottom: 5px; }
+        .activity-time { color: #666; font-size: 0.9em; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #status { margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Stream Feed Demo</h1>
+    <div id="status">Initializing...</div>
+    <div id="feed-container"></div>
+
+    <script>
+        const API_PREFIX = '/api/v1';
+        const USER_ID = 'demo-user';
+        const TARGET_FEED = { group: 'goals', id: 'COL' };
+
+        async function init() {
+            const status = document.getElementById('status');
+            
+            try {
+                // 1. Get Token
+                status.textContent = 'Fetching token...';
+                const tokenRes = await fetch(`${API_PREFIX}/token/${USER_ID}`);
+                const tokenData = await tokenRes.json();
+                
+                if (!tokenData.success) throw new Error('Failed to get token');
+                
+                // 2. Follow Feed
+                status.textContent = 'Following feed...';
+                await fetch(`${API_PREFIX}/feeds/${USER_ID}/follow?target_feed_group=${TARGET_FEED.group}&target_feed_id=${TARGET_FEED.id}`, {
+                    method: 'POST'
+                });
+
+                // 3. Connect to Stream
+                status.textContent = 'Connecting to Stream...';
+                const client = stream.connect(tokenData.api_key, tokenData.token, tokenData.app_id);
+                const userFeed = client.feed('user', USER_ID);
+
+                // 4. Fetch Activities
+                status.textContent = 'Loading activities...';
+                const results = await userFeed.get({ limit: 20, enrich: true });
+                
+                renderActivities(results.results);
+                status.textContent = `Connected as ${USER_ID}. Following ${TARGET_FEED.group}:${TARGET_FEED.id}`;
+
+            } catch (err) {
+                status.textContent = `Error: ${err.message}`;
+                console.error(err);
+            }
+        }
+
+        function renderActivities(activities) { // Removed 'window.' prefix
+            const container = document.getElementById('feed-container');
+            container.innerHTML = activities.map(activity => `
+                <div class="activity">
+                    <div class="activity-header">
+                        ${activity.actor} ${activity.verb} ${activity.object}
+                    </div>
+                    <div class="activity-content">
+                        ${JSON.stringify(activity.message || activity, null, 2)}
+                    </div>
+                    <div class="activity-time">${new Date(activity.time).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        init();
+    </script>
+</body>
+</html>

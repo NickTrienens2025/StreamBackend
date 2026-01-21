@@ -158,6 +158,25 @@ class StreamClient:
         feed = self.get_feed(feed_group, feed_id)
         return feed.token
 
+    def follow_feed(
+        self,
+        feed_group: str,
+        feed_id: str,
+        target_feed_group: str,
+        target_feed_id: str
+    ):
+        """
+        Follow a target feed
+
+        Args:
+            feed_group: Source feed group
+            feed_id: Source feed ID
+            target_feed_group: Target feed group
+            target_feed_id: Target feed ID
+        """
+        feed = self.get_feed(feed_group, feed_id)
+        feed.follow(target_feed_group, target_feed_id)
+
 
 # Singleton client instance
 stream_client = StreamClient()
