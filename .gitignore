@@ -50,3 +50,4 @@ htmlcov/
 
 # Docker
 docker-compose.override.yml
+StreamBackend.env
