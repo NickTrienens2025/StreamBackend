@@ -5,6 +5,7 @@ Platform-agnostic endpoints for querying feeds
 from fastapi import APIRouter, Query, HTTPException, Path
 from typing import Optional, List
 from app.stream_client import stream_client
+from app.s3_storage import s3_storage
 from app.config import settings
 
 router = APIRouter()
@@ -238,3 +239,78 @@ async def get_collection_objects(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch collection: {str(e)}")
+
+
+# S3 Storage Endpoints
+
+@router.get("/storage/progress")
+async def get_scrape_progress():
+    """
+    Get scrape progress from S3 storage
+
+    **Example:**
+    - `GET /api/v1/storage/progress` - Get current scrape progress
+    """
+    if not settings.S3_ENABLED:
+        raise HTTPException(status_code=503, detail="S3 storage is disabled")
+
+    try:
+        progress = await s3_storage.load_progress()
+        return {
+            "success": True,
+            "data": progress
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch progress: {str(e)}")
+
+
+@router.get("/storage/summaries")
+async def list_scrape_summaries():
+    """
+    List all scrape summaries from S3 storage
+
+    **Example:**
+    - `GET /api/v1/storage/summaries` - List all summary files
+    """
+    if not settings.S3_ENABLED:
+        raise HTTPException(status_code=503, detail="S3 storage is disabled")
+
+    try:
+        summaries = await s3_storage.list_summaries()
+        return {
+            "success": True,
+            "count": len(summaries),
+            "data": summaries
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list summaries: {str(e)}")
+
+
+@router.get("/storage/{key}")
+async def get_storage_data(
+    key: str = Path(..., description="Storage key (filename)")
+):
+    """
+    Get data from S3 storage by key
+
+    **Example:**
+    - `GET /api/v1/storage/scrape_progress.json` - Get progress file
+    - `GET /api/v1/storage/scrape_summary_2026-01-20.json` - Get specific summary
+    """
+    if not settings.S3_ENABLED:
+        raise HTTPException(status_code=503, detail="S3 storage is disabled")
+
+    try:
+        data = await s3_storage.read(key)
+        if data is None:
+            raise HTTPException(status_code=404, detail=f"Key not found: {key}")
+
+        return {
+            "success": True,
+            "key": key,
+            "data": data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch data: {str(e)}")

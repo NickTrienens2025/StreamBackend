@@ -28,5 +28,9 @@ services:
         value: 50
       - key: MAX_LIMIT
         value: 1000
+      - key: S3_BASE_URL
+        value: https://s3.foreverflow.click/api/hockeyGoals
+      - key: S3_ENABLED
+        value: true
     healthCheckPath: /health
     autoDeploy: true

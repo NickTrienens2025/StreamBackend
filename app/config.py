@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     DEFAULT_LIMIT: int = 50
     MAX_LIMIT: int = 1000
 
+    # S3-Compatible Storage
+    S3_BASE_URL: str = "https://s3.foreverflow.click/api/hockeyGoals"
+    S3_ENABLED: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

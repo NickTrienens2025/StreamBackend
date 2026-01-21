@@ -82,6 +82,10 @@ ALLOWED_ORIGINS=*            # Comma-separated origins
 DEBUG=false
 DEFAULT_LIMIT=50
 MAX_LIMIT=1000
+
+# S3-Compatible Storage
+S3_BASE_URL=https://s3.foreverflow.click/api/hockeyGoals
+S3_ENABLED=true
 ```
 
 ## API Endpoints
@@ -171,6 +175,39 @@ Get objects from a GetStream collection.
 **Example:**
 ```bash
 curl "http://localhost:8000/api/v1/collections/goals?ids=goal123&ids=goal456"
+```
+
+### Get Scrape Progress
+```
+GET /api/v1/storage/progress
+```
+Get current scrape progress from S3 storage.
+
+**Example:**
+```bash
+curl http://localhost:8000/api/v1/storage/progress
+```
+
+### List Scrape Summaries
+```
+GET /api/v1/storage/summaries
+```
+List all scrape summary files from S3 storage.
+
+**Example:**
+```bash
+curl http://localhost:8000/api/v1/storage/summaries
+```
+
+### Get Storage Data
+```
+GET /api/v1/storage/{key}
+```
+Get any file from S3 storage by key.
+
+**Example:**
+```bash
+curl http://localhost:8000/api/v1/storage/scrape_summary_2026-01-20.json
 ```
 
 ## Deployment
