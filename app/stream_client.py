@@ -3,7 +3,7 @@ GetStream client wrapper
 Provides methods for interacting with Activity Feeds
 """
 from typing import List, Dict, Any, Optional
-from stream import StreamClient as GetStreamClient
+from stream.client import StreamClient as GetStreamClient
 from app.config import settings
 
 
