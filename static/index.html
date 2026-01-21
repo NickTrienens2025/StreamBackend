@@ -135,6 +135,14 @@
             gap: 15px;
         }
 
+        .player-headshot {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ddd;
+        }
+
         .scorer-team-logo {
             width: 50px;
             height: 50px;
@@ -151,10 +159,62 @@
             color: #111;
         }
 
+        .scorer-position {
+            font-size: 0.8em;
+            color: #999;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
         .goal-context {
             color: #666;
             font-size: 0.9em;
             text-transform: capitalize;
+        }
+
+        .assists-section {
+            margin-top: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .assist-player {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .assist-headshot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+        }
+
+        .assist-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .assist-type {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .goalie-info {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #666;
+            font-style: italic;
+        }
+
+        .shot-location {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #999;
         }
 
         .card-actions {
@@ -335,8 +395,27 @@
                 // Scorer Details
                 const scoringTeam = details.scoring_team || activity.scoring_team || '';
                 const scorerName = details.scoring_player_name || details.scoring_player || activity.scoring_player_name || 'Unknown';
+                const scorerHeadshot = activity.scoring_player_headshot || '';
+                const scorerPosition = activity.scoring_player_position || '';
+                const scorerSweater = activity.scoring_player_sweater || '';
                 const shotType = details.shot_type || activity.shot_type || '';
                 const goalType = details.goal_type || activity.goal_type || '';
+
+                // Assists
+                const primaryAssist = activity.primary_assist_name || null;
+                const primaryAssistId = activity.primary_assist_id || null;
+                const secondaryAssist = activity.secondary_assist_name || null;
+                const secondaryAssistId = activity.secondary_assist_id || null;
+                const assistsCount = activity.assists_count || 0;
+
+                // Goalie
+                const goalieId = activity.goalie_id || null;
+                const goalieTeam = activity.goalie_team || null;
+
+                // Shot coordinates
+                const shotX = activity.shot_x_coord;
+                const shotY = activity.shot_y_coord;
+                const shotZone = activity.shot_zone;
 
                 // Reaction Data
                 const reactionCounts = activity.reaction_counts || {};
@@ -386,12 +465,48 @@
                         
                         ${scoringTeam ? `
                             <div class="scorer-info">
-                                <img src="${scoringTeamLogo}" class="scorer-team-logo" alt="${scoringTeam}">
+                                ${scorerHeadshot ? `<img src="${scorerHeadshot}" class="player-headshot" alt="${scorerName}" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/${scoringTeam}_light.svg'">` : `<img src="${scoringTeamLogo}" class="scorer-team-logo" alt="${scoringTeam}">`}
                                 <div class="scorer-text">
-                                    <div class="scorer-name">${scorerName}</div>
+                                    <div>
+                                        <span class="scorer-name">${scorerName}</span>
+                                        ${scorerPosition ? `<span class="scorer-position">${scorerPosition}</span>` : ''}
+                                        ${scorerSweater ? `<span class="scorer-position">#${scorerSweater}</span>` : ''}
+                                    </div>
                                     <div class="goal-context">${shotType} ${goalType ? `(${goalType})` : ''}</div>
                                 </div>
                             </div>
+
+                            ${(primaryAssist || secondaryAssist) ? `
+                                <div class="assists-section">
+                                    <strong>Assists:</strong>
+                                    ${primaryAssist ? `
+                                        <div class="assist-player">
+                                            ${primaryAssistId ? `<img src="https://assets.nhle.com/mugs/nhl/20232024/${scoringTeam}/${primaryAssistId}.png" class="assist-headshot" alt="${primaryAssist}" onerror="this.style.display='none'">` : ''}
+                                            <span class="assist-name">${primaryAssist}</span>
+                                            <span class="assist-type">(Primary)</span>
+                                        </div>
+                                    ` : ''}
+                                    ${secondaryAssist ? `
+                                        <div class="assist-player">
+                                            ${secondaryAssistId ? `<img src="https://assets.nhle.com/mugs/nhl/20232024/${scoringTeam}/${secondaryAssistId}.png" class="assist-headshot" alt="${secondaryAssist}" onerror="this.style.display='none'">` : ''}
+                                            <span class="assist-name">${secondaryAssist}</span>
+                                            <span class="assist-type">(Secondary)</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+
+                            ${goalieId ? `
+                                <div class="goalie-info">
+                                    Goalie: ${goalieTeam} (#${goalieId})
+                                </div>
+                            ` : ''}
+
+                            ${(shotX !== null && shotX !== undefined) ? `
+                                <div class="shot-location">
+                                    Shot: (${shotX}, ${shotY}) ${shotZone ? `Zone: ${shotZone}` : ''}
+                                </div>
+                            ` : ''}
                         ` : `
                             <div class="event-description">
                                 ${details.description || activity.object}
