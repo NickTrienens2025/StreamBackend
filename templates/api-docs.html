@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+
+{% block title %}API Documentation - NHL Goals Feed{% endblock %}
+
+{% block head %}
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        padding: 0;
+    }
+
+    .docs-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .docs-header {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .docs-header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        color: #1a1a2e;
+    }
+
+    .docs-header p {
+        font-size: 1.2em;
+        color: #666;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .endpoint-section {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .endpoint-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .http-method {
+        background: #10b981;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.85em;
+    }
+
+    .http-method.post {
+        background: #3b82f6;
+    }
+
+    .endpoint-path {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 1.1em;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .endpoint-description {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 20px;
+    }
+
+    .params-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+
+    .params-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .params-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        color: #555;
+    }
+
+    .param-name {
+        font-family: 'Monaco', 'Menlo', monospace;
+        color: #0066cc;
+        font-weight: 600;
+    }
+
+    .param-required {
+        color: #ef4444;
+        font-size: 0.8em;
+        font-weight: 700;
+    }
+
+    .param-optional {
+        color: #10b981;
+        font-size: 0.8em;
+        font-weight: 700;
+    }
+
+    .code-block {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 15px 0;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.9em;
+        line-height: 1.6;
+    }
+
+    .code-block .comment {
+        color: #6a9955;
+    }
+
+    .code-block .string {
+        color: #ce9178;
+    }
+
+    .code-block .keyword {
+        color: #569cd6;
+    }
+
+    .example-title {
+        font-weight: 600;
+        color: #333;
+        margin-top: 25px;
+        margin-bottom: 10px;
+        font-size: 1.05em;
+    }
+
+    .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 15px 0;
+    }
+
+    .tag {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
+    .tag.special {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .tag.clutch {
+        background: #fce4ec;
+        color: #c2185b;
+    }
+
+    .section-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #ddd, transparent);
+        margin: 40px 0;
+    }
+
+    .info-box {
+        background: #e8f4f8;
+        border-left: 4px solid #0066cc;
+        padding: 15px 20px;
+        border-radius: 6px;
+        margin: 20px 0;
+    }
+
+    .info-box strong {
+        color: #0066cc;
+    }
+
+    .response-example {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin: 15px 0;
+    }
+
+    .response-example pre {
+        margin: 0;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.9em;
+        color: #333;
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docs-container">
+    <div class="docs-header">
+        <h1>📖 API Documentation</h1>
+        <p>Complete guide to the NHL Goals Feed API - Query feeds, filter activities, and manage user authentication</p>
+    </div>
+
+    <!-- Authentication -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method">GET</span>
+            <span class="endpoint-path">/api/v1/auth/default-user</span>
+        </div>
+        <div class="endpoint-description">
+            Get or create a persistent default user with authentication token. Users are stored in S3 and persist across sessions.
+        </div>
+
+        <table class="params-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="param-name">alias</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>User alias (e.g., "user1", "user2"). If omitted, returns default guest user</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="example-title">Example Request:</div>
+        <div class="code-block">curl https://streambackend-h8en.onrender.com/api/v1/auth/default-user?alias=user1</div>
+
+        <div class="example-title">Example Response:</div>
+        <div class="response-example">
+            <pre>{
+  "success": true,
+  "user_id": "web-user1-a7b3c9d2",
+  "token": "eyJhbGci...",
+  "api_key": "your_api_key",
+  "app_id": "your_app_id"
+}</pre>
+        </div>
+    </div>
+
+    <!-- Get Feed Activities -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method">GET</span>
+            <span class="endpoint-path">/api/v1/feeds/{feed_id}/activities</span>
+        </div>
+        <div class="endpoint-description">
+            Get activities from a specific feed. All activities are automatically enriched with full Collection data. Supports ranking by importance score.
+        </div>
+
+        <table class="params-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="param-name">feed_id</span></td>
+                    <td>string</td>
+                    <td><span class="param-required">REQUIRED</span></td>
+                    <td>Feed ID (e.g., "COL" for Colorado, "nhl" for league-wide)</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">feed_group</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Feed group name (default: "goals")</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">limit</span></td>
+                    <td>integer</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Number of activities to return (default: 50, max: 1000)</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">offset</span></td>
+                    <td>integer</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Pagination offset (default: 0)</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">ranking</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Ranking formula - use "score" to sort by importance (default: chronological)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="example-title">Example Requests:</div>
+        <div class="code-block"><span class="comment"># Get 20 most recent goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/feeds/nhl/activities?limit=20
+
+<span class="comment"># Get top 10 most important goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/feeds/nhl/activities?limit=10&ranking=score
+
+<span class="comment"># Get Colorado Avalanche goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/feeds/COL/activities?limit=50</div>
+    </div>
+
+    <!-- Filter Activities -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method">GET</span>
+            <span class="endpoint-path">/api/v1/activities/filter</span>
+        </div>
+        <div class="endpoint-description">
+            Get activities with client-side filtering by tags. Supports filtering by team, goal type, clutch situations, and shot types.
+        </div>
+
+        <table class="params-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="param-name">feed_id</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Feed ID to query (default: "nhl")</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">tag</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Filter by interest tag (e.g., "game-winner", "overtime")</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">filter_tag</span></td>
+                    <td>string</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Filter by team code (e.g., "COL", "BOS")</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">limit</span></td>
+                    <td>integer</td>
+                    <td><span class="param-optional">OPTIONAL</span></td>
+                    <td>Number of activities to return (default: 50, max: 1000)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="example-title">Available Tags:</div>
+
+        <div style="margin: 20px 0;">
+            <strong>Teams:</strong>
+            <div class="tag-list">
+                <span class="tag">team:ANA</span>
+                <span class="tag">team:BOS</span>
+                <span class="tag">team:BUF</span>
+                <span class="tag">team:CAR</span>
+                <span class="tag">team:CBJ</span>
+                <span class="tag">team:CGY</span>
+                <span class="tag">team:CHI</span>
+                <span class="tag">team:COL</span>
+                <span class="tag">team:DAL</span>
+                <span class="tag">team:DET</span>
+                <span class="tag">team:EDM</span>
+                <span class="tag">team:FLA</span>
+                <span class="tag">team:LAK</span>
+                <span class="tag">team:MIN</span>
+                <span class="tag">team:MTL</span>
+                <span class="tag">team:NJD</span>
+                <span class="tag">team:NSH</span>
+                <span class="tag">team:NYI</span>
+                <span class="tag">team:NYR</span>
+                <span class="tag">team:OTT</span>
+                <span class="tag">team:PHI</span>
+                <span class="tag">team:PIT</span>
+                <span class="tag">team:SEA</span>
+                <span class="tag">team:SJS</span>
+                <span class="tag">team:STL</span>
+                <span class="tag">team:TBL</span>
+                <span class="tag">team:TOR</span>
+                <span class="tag">team:VAN</span>
+                <span class="tag">team:VGK</span>
+                <span class="tag">team:WPG</span>
+                <span class="tag">team:WSH</span>
+            </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <strong>Goal Types:</strong>
+            <div class="tag-list">
+                <span class="tag special">game-winner</span>
+                <span class="tag special">overtime</span>
+                <span class="tag special">shootout</span>
+                <span class="tag special">empty-net</span>
+                <span class="tag special">penalty-shot</span>
+                <span class="tag special">powerplay</span>
+                <span class="tag special">shorthanded</span>
+            </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <strong>Clutch Situations:</strong>
+            <div class="tag-list">
+                <span class="tag clutch">tying-goal</span>
+                <span class="tag clutch">go-ahead-goal</span>
+                <span class="tag clutch">comeback</span>
+                <span class="tag clutch">late-period</span>
+                <span class="tag clutch">buzzer-beater</span>
+                <span class="tag clutch">close-game</span>
+                <span class="tag clutch">first-goal</span>
+            </div>
+        </div>
+
+        <div class="example-title">Example Requests:</div>
+        <div class="code-block"><span class="comment"># Get all game-winning goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/activities/filter?tag=game-winner
+
+<span class="comment"># Get Colorado Avalanche goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/activities/filter?filter_tag=COL
+
+<span class="comment"># Get overtime goals</span>
+curl https://streambackend-h8en.onrender.com/api/v1/activities/filter?tag=overtime&limit=20</div>
+    </div>
+
+    <!-- Feed Statistics -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method">GET</span>
+            <span class="endpoint-path">/api/v1/feeds/{feed_id}/stats</span>
+        </div>
+        <div class="endpoint-description">
+            Get aggregated statistics for a feed including counts by type, interest tags, and filter tags.
+        </div>
+
+        <div class="example-title">Example Request:</div>
+        <div class="code-block">curl https://streambackend-h8en.onrender.com/api/v1/feeds/nhl/stats</div>
+
+        <div class="example-title">Example Response:</div>
+        <div class="response-example">
+            <pre>{
+  "success": true,
+  "feed": "goals:nhl",
+  "stats": {
+    "total_activities": 255,
+    "by_type": {
+      "goal": 255
+    },
+    "by_tag": {
+      "game-winner": 12,
+      "overtime": 5,
+      "powerplay": 48,
+      "shorthanded": 3
+    },
+    "by_filter_tag": {
+      "team:COL": 45,
+      "team:BOS": 38,
+      "team:TOR": 41
+    }
+  }
+}</pre>
+        </div>
+    </div>
+
+    <!-- Generate Token -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method">GET</span>
+            <span class="endpoint-path">/api/v1/token/{feed_id}</span>
+        </div>
+        <div class="endpoint-description">
+            Generate a client-side feed token for frontend apps using the GetStream JavaScript SDK.
+        </div>
+
+        <div class="example-title">Example Request:</div>
+        <div class="code-block">curl https://streambackend-h8en.onrender.com/api/v1/token/user123</div>
+    </div>
+
+    <!-- Follow Feed -->
+    <div class="endpoint-section">
+        <div class="endpoint-header">
+            <span class="http-method post">POST</span>
+            <span class="endpoint-path">/api/v1/feeds/{feed_id}/follow</span>
+        </div>
+        <div class="endpoint-description">
+            Make a user feed follow a target feed to receive its activities.
+        </div>
+
+        <table class="params-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="param-name">feed_id</span></td>
+                    <td>string</td>
+                    <td><span class="param-required">REQUIRED</span></td>
+                    <td>Source feed ID (the user)</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">target_feed_group</span></td>
+                    <td>string</td>
+                    <td><span class="param-required">REQUIRED</span></td>
+                    <td>Target feed group (e.g., "goals")</td>
+                </tr>
+                <tr>
+                    <td><span class="param-name">target_feed_id</span></td>
+                    <td>string</td>
+                    <td><span class="param-required">REQUIRED</span></td>
+                    <td>Target feed ID (e.g., "COL")</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="example-title">Example Request:</div>
+        <div class="code-block">curl -X POST \
+  "https://streambackend-h8en.onrender.com/api/v1/feeds/user123/follow?target_feed_group=goals&target_feed_id=COL"</div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Ranking System -->
+    <div class="endpoint-section">
+        <h2 style="margin-bottom: 20px; color: #1a1a2e;">🏆 Goal Ranking System</h2>
+        <div class="endpoint-description">
+            Goals are ranked by importance score based on multiple factors. Use <code>?ranking=score</code> to sort by importance instead of chronology.
+        </div>
+
+        <div class="info-box">
+            <strong>How It Works:</strong> Each goal gets a base score of 1, then adds points for special circumstances like game-winners (+10), overtime (+5), comebacks (+6-7), late period (+2-3), and more.
+        </div>
+
+        <div style="margin-top: 25px;">
+            <strong style="display: block; margin-bottom: 15px; font-size: 1.1em;">Scoring Breakdown:</strong>
+            <ul style="line-height: 2; color: #555;">
+                <li><strong>+10 points:</strong> Game-winning goals</li>
+                <li><strong>+7 points:</strong> Tying goals when trailing (comeback)</li>
+                <li><strong>+6 points:</strong> Go-ahead goals after being tied or trailing</li>
+                <li><strong>+5 points:</strong> Overtime or shootout goals</li>
+                <li><strong>+4 points:</strong> Short-handed goals</li>
+                <li><strong>+3 points:</strong> Late period goals (&lt;2 minutes) or penalty shots</li>
+                <li><strong>+2 points:</strong> Buzzer beaters (&lt;30 seconds) or close games (1-goal difference)</li>
+                <li><strong>+1 point:</strong> Power-play goals</li>
+                <li><strong>-1 point:</strong> Empty net goals (less exciting)</li>
+            </ul>
+        </div>
+
+        <div class="example-title">Example - Game-Winning Overtime Goal:</div>
+        <div class="code-block">Base: 1
++10 (game-winner)
++5  (overtime)
++2  (close game)
+---
+Total: 18 points</div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Additional Info -->
+    <div class="endpoint-section">
+        <h2 style="margin-bottom: 20px; color: #1a1a2e;">ℹ️ Additional Information</h2>
+
+        <div style="margin-bottom: 25px;">
+            <strong style="display: block; margin-bottom: 10px;">Base URL:</strong>
+            <div class="code-block">https://streambackend-h8en.onrender.com</div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <strong style="display: block; margin-bottom: 10px;">API Prefix:</strong>
+            <div class="code-block">/api/v1</div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <strong style="display: block; margin-bottom: 10px;">Interactive Swagger Docs:</strong>
+            <div class="code-block">https://streambackend-h8en.onrender.com/docs</div>
+        </div>
+
+        <div class="info-box">
+            <strong>Note:</strong> All responses follow a consistent format with <code>success</code>, <code>data</code>, and optional <code>pagination</code> fields. Errors include <code>success: false</code> and <code>detail</code> messages.
+        </div>
+    </div>
+</div>
+{% endblock %}

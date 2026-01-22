@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NHL Goals Feed{% endblock %}</title>
+
+    <style>
+        /* Navigation Styles */
+        .site-nav {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 0;
+            margin: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            font-size: 1.3em;
+            font-weight: 800;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-brand:hover {
+            opacity: 0.9;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-links a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .nav-links a.btn-special {
+            background: #0066cc;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .nav-links a.btn-special:hover {
+            background: #0052a3;
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-links a {
+                font-size: 0.85em;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="site-nav">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <span>🏒</span>
+                <span>NHL Goals Feed</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/user1" {% if active_page == 'user1' %}class="active"{% endif %}>User 1</a></li>
+                <li><a href="/user2" {% if active_page == 'user2' %}class="active"{% endif %}>User 2</a></li>
+                <li><a href="/user3" {% if active_page == 'user3' %}class="active"{% endif %}>User 3</a></li>
+                <li><a href="/filters" {% if active_page == 'filters' %}class="active"{% endif %}>🔍 Filters</a></li>
+                <li><a href="/api-docs" class="btn-special" {% if active_page == 'api-docs' %}class="active btn-special"{% endif %}>📖 API Docs</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    {% block content %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

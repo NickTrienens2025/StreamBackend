@@ -2,10 +2,11 @@
 Main FastAPI application
 Platform-agnostic backend for GetStream Activity Feeds
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.api import router as api_router
 
@@ -28,6 +29,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Set up templates
+templates = Jinja2Templates(directory="templates")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -46,20 +49,42 @@ async def health_check():
 
 # Root endpoint
 @app.get("/")
-async def root():
+async def root(request: Request):
     """Serve index.html"""
-    from fastapi.responses import FileResponse
-    return FileResponse('static/index.html')
+    return templates.TemplateResponse("index.html", {"request": request, "active_page": "home"})
 
 
-# Serve index.html for user routes for testing
+# Serve index.html for user routes
 @app.get("/user1")
+async def user1(request: Request):
+    """Serve index.html for user1"""
+    return templates.TemplateResponse("index.html", {"request": request, "active_page": "user1"})
+
+
 @app.get("/user2")
+async def user2(request: Request):
+    """Serve index.html for user2"""
+    return templates.TemplateResponse("index.html", {"request": request, "active_page": "user2"})
+
+
 @app.get("/user3")
-async def user_root():
-    """Serve index.html for specific users"""
-    from fastapi.responses import FileResponse
-    return FileResponse('static/index.html')
+async def user3(request: Request):
+    """Serve index.html for user3"""
+    return templates.TemplateResponse("index.html", {"request": request, "active_page": "user3"})
+
+
+# Filters page
+@app.get("/filters")
+async def filters(request: Request):
+    """Serve filters page"""
+    return templates.TemplateResponse("filters.html", {"request": request, "active_page": "filters"})
+
+
+# API Documentation page
+@app.get("/api-docs")
+async def api_docs(request: Request):
+    """Serve API documentation page"""
+    return templates.TemplateResponse("api-docs.html", {"request": request, "active_page": "api-docs"})
 
 
 # Include API router

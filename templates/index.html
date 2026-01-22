@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+
+{% block title %}NHL Goals Feed{% endblock %}
+
+{% block head %}
+<script>
+    window.process = { env: { NODE_ENV: 'production' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/getstream/dist/js_min/getstream.js"></script>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 0;
+    }
+
+    .feed-content {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    h1 {
+        text-align: center;
+        color: #1a1a1a;
+        margin-bottom: 10px;
+    }
+
+    #status {
+        text-align: center;
+        color: #666;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+    }
+
+    .activity-card {
+        background: white;
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease;
+    }
+
+    .activity-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        color: #666;
+        font-size: 0.75em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .teams-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        padding: 0 5px;
+    }
+
+    .team {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 80px;
+    }
+
+    .team-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        margin-bottom: 2px;
+        opacity: 0.7;
+        transition: all 0.3s ease;
+    }
+
+    .team.scoring-team .team-logo {
+        width: 50px;
+        height: 50px;
+        opacity: 1;
+    }
+
+    .team.scoring-team .team-code {
+        font-size: 1.2em;
+        color: #000;
+    }
+
+    .team-code {
+        font-weight: 700;
+        margin-bottom: 4px;
+        font-size: 1.1em;
+    }
+
+    .team-score {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .winning {
+        color: #000;
+    }
+
+    .vs-divider {
+        color: #999;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-top: -30px;
+    }
+
+    .event-details {
+        text-align: center;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
+
+    .event-title {
+        font-weight: 800;
+        color: #d32f2f;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+        font-size: 0.9em;
+    }
+
+    .event-description {
+        color: #444;
+        line-height: 1.4;
+    }
+
+    .scorer-info {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 10px;
+        gap: 15px;
+    }
+
+    .player-headshot {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ddd;
+    }
+
+    .scorer-team-logo {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+    }
+
+    .scorer-text {
+        text-align: left;
+    }
+
+    .scorer-name {
+        font-size: 1.1em;
+        font-weight: 800;
+        color: #111;
+    }
+
+    .scorer-position {
+        font-size: 0.8em;
+        color: #999;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .goal-context {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: capitalize;
+    }
+
+    .assists-section {
+        margin-top: 6px;
+        padding: 6px 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 0.85em;
+    }
+
+    .assist-player {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .assist-headshot {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 1px solid #ccc;
+    }
+
+    .assist-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .assist-type {
+        color: #999;
+        font-size: 0.85em;
+    }
+
+    .goalie-info {
+        margin-top: 8px;
+        font-size: 0.85em;
+        color: #666;
+        font-style: italic;
+    }
+
+    .shot-location {
+        margin-top: 8px;
+        font-size: 0.8em;
+        color: #999;
+    }
+
+    .card-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 8px;
+        padding-top: 6px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .json-toggle {
+        background: #f0f2f5;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.75em;
+        color: #666;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .json-toggle:hover {
+        background: #e4e6eb;
+    }
+
+    .json-container {
+        margin-top: 8px;
+        padding: 8px;
+        background: #1e1e1e;
+        border-radius: 6px;
+        overflow-x: auto;
+        display: none;
+    }
+
+    .json-container.visible {
+        display: block;
+    }
+
+    .json-content {
+        color: #d4d4d4;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.75em;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .action-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #666;
+        font-size: 0.9em;
+        padding: 5px 10px;
+        border-radius: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+        background-color: #f7f7f7;
+    }
+
+    .like-btn.liked {
+        color: #e0245e;
+        fill: #e0245e;
+    }
+
+    .like-btn.liked svg {
+        fill: #e0245e;
+        stroke: #e0245e;
+    }
+
+    .count {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feed-content">
+    <h1>🏒 NHL Goals Feed</h1>
+    <div id="status">Initializing...</div>
+    <div id="feed-container"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const API_PREFIX = '/api/v1';
+    const USER_ID = 'demo-user';
+    const TARGET_FEED = { group: 'goals', id: 'COL' };
+
+    let client;
+
+    async function init() {
+        const status = document.getElementById('status');
+
+        try {
+            status.textContent = 'Authenticating...';
+
+            const path = window.location.pathname;
+            const userMatch = path.match(/^\/(user\d+)$/);
+            const aliasStr = userMatch ? `?alias=${userMatch[1]}` : '';
+
+            const authRes = await fetch(`${API_PREFIX}/auth/default-user${aliasStr}`);
+            const authData = await authRes.json();
+
+            if (!authData.success) throw new Error('Failed to authenticate');
+
+            const { user_id, token, api_key, app_id } = authData;
+
+            status.textContent = 'Connecting to Stream...';
+            client = stream.connect(api_key, token, app_id);
+            const userFeed = client.feed('user', user_id);
+
+            status.textContent = 'Loading activities...';
+            const results = await userFeed.get({ limit: 20, enrich: true, reactions: { own: true, counts: true, recent: true } });
+
+            renderActivities(results.results);
+            status.textContent = `Connected as ${user_id}. Following ${TARGET_FEED.group}:${TARGET_FEED.id}`;
+
+        } catch (err) {
+            status.textContent = `Error: ${err.message}`;
+            console.error(err);
+        }
+    }
+
+    async function toggleLike(activityId, event) {
+        event.stopPropagation();
+        if (!client) return;
+
+        const btn = document.getElementById(`like-btn-${activityId}`);
+        const countSpan = document.getElementById(`like-count-${activityId}`);
+        const isLiked = btn.classList.contains('liked');
+
+        const newCount = parseInt(countSpan.textContent) + (isLiked ? -1 : 1);
+        countSpan.textContent = newCount > 0 ? newCount : '';
+        btn.classList.toggle('liked');
+
+        try {
+            if (isLiked) {
+                const reactionId = btn.dataset.reactionId;
+                if (reactionId) {
+                    await client.reactions.delete(reactionId);
+                    btn.removeAttribute('data-reaction-id');
+                } else {
+                    console.warn("No reaction ID found to delete");
+                }
+            } else {
+                const response = await client.reactions.add('like', activityId);
+                btn.dataset.reactionId = response.id;
+            }
+        } catch (e) {
+            console.error("Reaction error", e);
+            countSpan.textContent = parseInt(countSpan.textContent) + (isLiked ? 1 : -1);
+            btn.classList.toggle('liked');
+        }
+    }
+
+    function toggleJSON(activityId) {
+        const container = document.getElementById(`json-${activityId}`);
+        const btn = document.getElementById(`json-btn-${activityId}`);
+        if (container.classList.contains('visible')) {
+            container.classList.remove('visible');
+            btn.textContent = 'View JSON';
+        } else {
+            container.classList.add('visible');
+            btn.textContent = 'Hide JSON';
+        }
+    }
+
+    function renderActivities(activities) {
+        const container = document.getElementById('feed-container');
+        container.innerHTML = activities.map(activity => {
+            let details = {};
+            try {
+                details = typeof activity.text === 'string' ? JSON.parse(activity.text) : activity.text || {};
+            } catch (e) {
+                details = {};
+            }
+
+            const homeTeam = details.home_team || activity.home_team || 'NHL';
+            const awayTeam = details.away_team || activity.away_team || 'NHL';
+            const homeScore = details.home_score || activity.home_score || 0;
+            const awayScore = details.away_score || activity.away_score || 0;
+            const timeRemaining = details.time_remaining || '';
+            const period = activity.period || details.period || '';
+            const gameId = details.game_id || activity.game_id;
+
+            const scoringTeam = activity.scoring_team || details.scoring_team || '';
+            const scorerName = activity.scoring_player_name || details.scoring_player_name || details.scoring_player || 'Unknown';
+            const scorerHeadshot = activity.scoring_player_headshot || null;
+            const scorerPosition = activity.scoring_player_position || null;
+            const scorerSweater = activity.scoring_player_sweater || null;
+            const shotType = activity.shot_type || details.shot_type || '';
+            const goalType = activity.goal_type || details.goal_type || '';
+
+            const primaryAssist = activity.primary_assist_name || null;
+            const primaryAssistId = activity.primary_assist_id || null;
+            const secondaryAssist = activity.secondary_assist_name || null;
+            const secondaryAssistId = activity.secondary_assist_id || null;
+
+            const goalieId = activity.goalie_id || null;
+            const goalieTeam = activity.goalie_team || null;
+
+            const shotX = activity.shot_x_coord;
+            const shotY = activity.shot_y_coord;
+            const shotZone = activity.shot_zone;
+
+            const reactionCounts = activity.reaction_counts || {};
+            const likeCount = reactionCounts.like || 0;
+
+            const ownReactions = activity.own_reactions || {};
+            const myLikes = ownReactions.like || [];
+            const isLiked = myLikes.length > 0;
+            const reactionId = isLiked ? myLikes[0].id : '';
+
+            const homeLogo = `https://assets.nhle.com/logos/nhl/svg/${homeTeam}_light.svg`;
+            const awayLogo = `https://assets.nhle.com/logos/nhl/svg/${awayTeam}_light.svg`;
+            const scoringTeamLogo = scoringTeam ? `https://assets.nhle.com/logos/nhl/svg/${scoringTeam}_light.svg` : null;
+
+            const gameUrl = gameId ? `https://www.nhl.com/gamecenter/${gameId}` : '#';
+            const gameDate = activity.time ? new Date(activity.time).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+            const isHomeScoring = scoringTeam === homeTeam;
+            const isAwayScoring = scoringTeam === awayTeam;
+
+            return `
+            <div class="activity-card">
+                <div class="game-header">
+                    <span class="game-status">Period ${period}${timeRemaining ? ' - ' + timeRemaining : ''}</span>
+                    <span class="activity-time">${gameDate}</span>
+                </div>
+
+                <div class="teams-container" style="margin-bottom: 12px;">
+                    <div class="team ${isAwayScoring ? 'scoring-team' : ''}">
+                        <img src="${awayLogo}" alt="${awayTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
+                        <div class="team-code">${awayTeam}</div>
+                        <div class="team-score ${awayScore > homeScore ? 'winning' : ''}">${awayScore}</div>
+                    </div>
+
+                    <div class="vs-divider">@</div>
+
+                    <div class="team ${isHomeScoring ? 'scoring-team' : ''}">
+                        <img src="${homeLogo}" alt="${homeTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
+                        <div class="team-code">${homeTeam}</div>
+                        <div class="team-score ${homeScore > awayScore ? 'winning' : ''}">${homeScore}</div>
+                    </div>
+                </div>
+
+                <div class="event-details">
+                    <div class="event-title">GOAL!</div>
+
+                    ${scoringTeam ? `
+                        <div class="scorer-info">
+                            ${scorerHeadshot ? `<img src="${scorerHeadshot}" class="player-headshot" alt="${scorerName}" onerror="this.src='${scoringTeamLogo}'">` : `<img src="${scoringTeamLogo}" class="scorer-team-logo" alt="${scoringTeam}">`}
+                            <div class="scorer-text">
+                                <div>
+                                    <span class="scorer-name">${scorerName}</span>
+                                    ${scorerPosition ? `<span class="scorer-position">${scorerPosition}</span>` : ''}
+                                    ${scorerSweater ? `<span class="scorer-position">#${scorerSweater}</span>` : ''}
+                                </div>
+                                <div class="goal-context">${shotType} ${goalType ? `(${goalType})` : ''}</div>
+                            </div>
+                        </div>
+
+                        ${(primaryAssist || secondaryAssist) ? `
+                            <div class="assists-section">
+                                <strong>Assists:</strong>
+                                ${primaryAssist ? `
+                                    <div class="assist-player">
+                                        ${primaryAssistId ? `<img src="https://assets.nhle.com/mugs/nhl/20232024/${scoringTeam}/${primaryAssistId}.png" class="assist-headshot" alt="${primaryAssist}" onerror="this.style.display='none'">` : ''}
+                                        <span class="assist-name">${primaryAssist}</span>
+                                        <span class="assist-type">(Primary)</span>
+                                    </div>
+                                ` : ''}
+                                ${secondaryAssist ? `
+                                    <div class="assist-player">
+                                        ${secondaryAssistId ? `<img src="https://assets.nhle.com/mugs/nhl/20232024/${scoringTeam}/${secondaryAssistId}.png" class="assist-headshot" alt="${secondaryAssist}" onerror="this.style.display='none'">` : ''}
+                                        <span class="assist-name">${secondaryAssist}</span>
+                                        <span class="assist-type">(Secondary)</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+
+                        ${goalieId ? `
+                            <div class="goalie-info">
+                                Goalie: ${goalieTeam} (#${goalieId})
+                            </div>
+                        ` : ''}
+
+                        ${(shotX !== null && shotX !== undefined) ? `
+                            <div class="shot-location">
+                                Shot: (${shotX}, ${shotY}) ${shotZone ? `Zone: ${shotZone}` : ''}
+                            </div>
+                        ` : ''}
+                    ` : `
+                        <div class="event-description">
+                            ${details.description || activity.object}
+                        </div>
+                    `}
+                </div>
+
+                <div class="card-actions">
+                     <button
+                        id="like-btn-${activity.id}"
+                        class="action-btn like-btn ${isLiked ? 'liked' : ''}"
+                        onclick="toggleLike('${activity.id}', event)"
+                        data-reaction-id="${reactionId}"
+                     >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        <span id="like-count-${activity.id}" class="count">${likeCount > 0 ? likeCount : ''}</span>
+                    </button>
+                    <button
+                        id="json-btn-${activity.id}"
+                        class="json-toggle"
+                        onclick="toggleJSON('${activity.id}')"
+                    >
+                        View JSON
+                    </button>
+                    <a href="${gameUrl}" target="_blank" class="action-btn" style="text-decoration: none; color: #007bff; font-weight: 500;">
+                        GameCenter &rarr;
+                    </a>
+                </div>
+
+                <div id="json-${activity.id}" class="json-container">
+                    <div class="json-content">${JSON.stringify(activity, null, 2)}</div>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
+
+    init();
+</script>
+{% endblock %}
