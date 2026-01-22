@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filter Goals - NHL Goals Feed</title>
+    <script src="https://cdn.jsdelivr.net/npm/getstream/dist/js_min/getstream.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0052a3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .filter-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .filter-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .filter-section {
+            border-right: 1px solid #eee;
+            padding-right: 20px;
+        }
+
+        .filter-section:last-child {
+            border-right: none;
+        }
+
+        .filter-section h3 {
+            font-size: 1em;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .filter-option:hover {
+            background: #f8f9fa;
+            margin-left: -6px;
+            margin-right: -6px;
+            padding-left: 6px;
+            padding-right: 6px;
+            border-radius: 4px;
+        }
+
+        .filter-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+            accent-color: #0066cc;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            user-select: none;
+            flex: 1;
+            font-size: 0.95em;
+        }
+
+        .filter-count {
+            color: #999;
+            font-size: 0.85em;
+            margin-left: 6px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .results-count {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .sort-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sort-control label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .sort-control select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        #results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 16px;
+        }
+
+        .activity-card {
+            background: white;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .activity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.8em;
+        }
+
+        .game-status {
+            color: #666;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .activity-time {
+            color: #999;
+            font-weight: 500;
+        }
+
+        .teams-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+
+        .team {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 70px;
+            transition: opacity 0.3s ease;
+        }
+
+        .team.opponent-team {
+            opacity: 0.4;
+        }
+
+        .team.scoring-team {
+            opacity: 1;
+        }
+
+        .team-logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            margin-bottom: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .team.scoring-team .team-logo {
+            width: 45px;
+            height: 45px;
+        }
+
+        .team-code {
+            font-weight: 800;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .team-score {
+            font-size: 1.4em;
+            font-weight: 900;
+            color: #555;
+        }
+
+        .vs-divider {
+            color: #bbb;
+            font-weight: 500;
+            font-size: 0.85em;
+            margin-top: -25px;
+        }
+
+        .event-title {
+            color: #d32f2f;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+        }
+
+        .scorer-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 15px;
+        }
+
+        .player-headshot {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ddd;
+        }
+
+        .scorer-text {
+            text-align: left;
+        }
+
+        .scorer-name {
+            font-size: 1.1em;
+            font-weight: 800;
+            color: #111;
+        }
+
+        .scorer-position {
+            font-size: 0.8em;
+            color: #999;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .goal-context {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: capitalize;
+        }
+
+        .tags-container {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        .tag.special {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .tag.clutch {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 12px;
+            color: #999;
+        }
+
+        .no-results h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .filter-sections {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-section {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 16px;
+                margin-bottom: 16px;
+            }
+
+            #results-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-actions">
+            <div>
+                <h1>🏒 Filter Goals</h1>
+                <p style="color: #666; margin-top: 5px;">Find specific goals by team, type, situation, and more</p>
+            </div>
+            <a href="/" style="text-decoration: none;">
+                <button class="btn btn-secondary">← Back to Feed</button>
+            </a>
+        </div>
+
+        <div class="filter-panel">
+            <div class="filter-sections">
+                <!-- Teams -->
+                <div class="filter-section">
+                    <h3>🏒 Teams</h3>
+                    <div id="team-filters"></div>
+                </div>
+
+                <!-- Goal Types -->
+                <div class="filter-section">
+                    <h3>🎯 Goal Types</h3>
+                    <div class="filter-option">
+                        <input type="checkbox" id="game-winner" value="game-winner">
+                        <label for="game-winner">Game Winners</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="overtime" value="overtime">
+                        <label for="overtime">Overtime</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="shootout" value="shootout">
+                        <label for="shootout">Shootout</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="empty-net" value="empty-net">
+                        <label for="empty-net">Empty Net</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="penalty-shot" value="penalty-shot">
+                        <label for="penalty-shot">Penalty Shot</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="powerplay" value="powerplay">
+                        <label for="powerplay">Power Play</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="shorthanded" value="shorthanded">
+                        <label for="shorthanded">Short Handed</label>
+                    </div>
+                </div>
+
+                <!-- Clutch Situations -->
+                <div class="filter-section">
+                    <h3>⚡ Clutch Situations</h3>
+                    <div class="filter-option">
+                        <input type="checkbox" id="tying-goal" value="tying-goal">
+                        <label for="tying-goal">Tying Goals</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="go-ahead-goal" value="go-ahead-goal">
+                        <label for="go-ahead-goal">Go-Ahead Goals</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="comeback" value="comeback">
+                        <label for="comeback">Comeback Goals</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="late-period" value="late-period">
+                        <label for="late-period">Late Period (&lt;2 min)</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="buzzer-beater" value="buzzer-beater">
+                        <label for="buzzer-beater">Buzzer Beaters (&lt;30 sec)</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="close-game" value="close-game">
+                        <label for="close-game">Close Game (1-goal diff)</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="first-goal" value="first-goal">
+                        <label for="first-goal">First Goal of Game</label>
+                    </div>
+                </div>
+
+                <!-- Shot Types -->
+                <div class="filter-section">
+                    <h3>🥅 Shot Types</h3>
+                    <div class="filter-option">
+                        <input type="checkbox" id="wrist" value="shot:wrist">
+                        <label for="wrist">Wrist Shot</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="snap" value="shot:snap">
+                        <label for="snap">Snap Shot</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="slap" value="shot:slap">
+                        <label for="slap">Slap Shot</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="backhand" value="shot:backhand">
+                        <label for="backhand">Backhand</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="tip-in" value="shot:tip-in">
+                        <label for="tip-in">Tip-In</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="wrap-around" value="shot:wrap-around">
+                        <label for="wrap-around">Wrap-Around</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="deflected" value="shot:deflected">
+                        <label for="deflected">Deflected</label>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear All Filters</button>
+                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+            </div>
+        </div>
+
+        <div class="results-header">
+            <div class="results-count" id="results-count">Loading...</div>
+            <div class="sort-control">
+                <label>Sort:</label>
+                <select id="sort-select" onchange="applyFilters()">
+                    <option value="time">Newest First</option>
+                    <option value="score">Most Important</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="results-container"></div>
+    </div>
+
+    <script>
+        const API_PREFIX = '/api/v1';
+        const NHL_TEAMS = [
+            'ANA', 'BOS', 'BUF', 'CAR', 'CBJ', 'CGY', 'CHI', 'COL', 'DAL', 'DET',
+            'EDM', 'FLA', 'LAK', 'MIN', 'MTL', 'NJD', 'NSH', 'NYI', 'NYR', 'OTT',
+            'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR', 'VAN', 'VGK', 'WPG', 'WSH'
+        ];
+
+        let allActivities = [];
+
+        // Populate team filters
+        function populateTeamFilters() {
+            const container = document.getElementById('team-filters');
+            NHL_TEAMS.forEach(team => {
+                const div = document.createElement('div');
+                div.className = 'filter-option';
+                div.innerHTML = `
+                    <input type="checkbox" id="team-${team}" value="team:${team}">
+                    <label for="team-${team}">${team}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Fetch all activities
+        async function loadActivities() {
+            try {
+                const sortBy = document.getElementById('sort-select').value;
+                const params = new URLSearchParams({
+                    limit: 1000,
+                    enrich: true
+                });
+
+                if (sortBy === 'score') {
+                    params.append('ranking', 'score');
+                }
+
+                const response = await fetch(`${API_PREFIX}/feeds/nhl/activities?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    allActivities = data.data;
+                    applyFilters();
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                document.getElementById('results-container').innerHTML = `
+                    <div class="no-results">
+                        <h3>Error loading goals</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Get selected filters
+        function getSelectedFilters() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const selectedTags = getSelectedFilters();
+
+            // Filter activities
+            let filtered = allActivities;
+
+            if (selectedTags.length > 0) {
+                filtered = allActivities.filter(activity => {
+                    const activityTags = activity.interest_tags || [];
+                    // Activity must have ALL selected tags
+                    return selectedTags.every(tag => activityTags.includes(tag));
+                });
+            }
+
+            // Update results count
+            document.getElementById('results-count').textContent =
+                `${filtered.length} goal${filtered.length !== 1 ? 's' : ''} found`;
+
+            // Render results
+            renderResults(filtered);
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            applyFilters();
+        }
+
+        // Render results
+        function renderResults(activities) {
+            const container = document.getElementById('results-container');
+
+            if (activities.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results" style="grid-column: 1 / -1;">
+                        <h3>No goals found</h3>
+                        <p>Try adjusting your filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = activities.map(activity => {
+                const homeTeam = activity.home_team || 'NHL';
+                const awayTeam = activity.away_team || 'NHL';
+                const homeScore = activity.home_score || 0;
+                const awayScore = activity.away_score || 0;
+                const period = activity.period || '';
+                const timeRemaining = activity.time_remaining || '';
+                const scoringTeam = activity.scoring_team || '';
+                const scorerName = activity.scoring_player_name || 'Unknown';
+                const scorerHeadshot = activity.scoring_player_headshot;
+                const scorerPosition = activity.scoring_player_position;
+                const scorerSweater = activity.scoring_player_sweater;
+                const shotType = activity.shot_type || '';
+                const goalType = activity.goal_type || '';
+                const gameDate = activity.time ? new Date(activity.time).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+                const isHomeScoring = scoringTeam === homeTeam;
+                const isAwayScoring = scoringTeam === awayTeam;
+
+                const homeLogo = `https://assets.nhle.com/logos/nhl/svg/${homeTeam}_light.svg`;
+                const awayLogo = `https://assets.nhle.com/logos/nhl/svg/${awayTeam}_light.svg`;
+                const scoringTeamLogo = scoringTeam ? `https://assets.nhle.com/logos/nhl/svg/${scoringTeam}_light.svg` : null;
+
+                // Get relevant tags
+                const tags = activity.interest_tags || [];
+                const specialTags = tags.filter(tag =>
+                    ['game-winner', 'overtime', 'shootout', 'empty-net', 'penalty-shot'].includes(tag)
+                );
+                const clutchTags = tags.filter(tag =>
+                    ['tying-goal', 'go-ahead-goal', 'comeback', 'late-period', 'buzzer-beater', 'close-game'].includes(tag)
+                );
+
+                return `
+                    <div class="activity-card">
+                        <div class="game-header">
+                            <span class="game-status">PERIOD ${period}${timeRemaining ? ' - ' + timeRemaining : ''}</span>
+                            <span class="activity-time">${gameDate}</span>
+                        </div>
+
+                        <div class="teams-container">
+                            <div class="team ${isAwayScoring ? 'scoring-team' : 'opponent-team'}">
+                                <img src="${awayLogo}" alt="${awayTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
+                                <div class="team-code">${awayTeam}</div>
+                                <div class="team-score">${awayScore}</div>
+                            </div>
+
+                            <div class="vs-divider">@</div>
+
+                            <div class="team ${isHomeScoring ? 'scoring-team' : 'opponent-team'}">
+                                <img src="${homeLogo}" alt="${homeTeam}" class="team-logo" onerror="this.src='https://assets.nhle.com/logos/nhl/svg/NHL_light.svg'">
+                                <div class="team-code">${homeTeam}</div>
+                                <div class="team-score">${homeScore}</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; padding: 10px;">
+                            <div class="event-title">GOAL!</div>
+
+                            <div class="scorer-info">
+                                ${scorerHeadshot ? `<img src="${scorerHeadshot}" class="player-headshot" alt="${scorerName}" onerror="this.src='${scoringTeamLogo}'">` : `<img src="${scoringTeamLogo}" class="player-headshot" alt="${scoringTeam}">`}
+                                <div class="scorer-text">
+                                    <div>
+                                        <span class="scorer-name">${scorerName}</span>
+                                        ${scorerPosition ? `<span class="scorer-position">${scorerPosition}</span>` : ''}
+                                        ${scorerSweater ? `<span class="scorer-position">#${scorerSweater}</span>` : ''}
+                                    </div>
+                                    <div class="goal-context">${shotType} ${goalType ? `(${goalType})` : ''}</div>
+                                </div>
+                            </div>
+
+                            <div class="tags-container">
+                                ${specialTags.map(tag => `<span class="tag special">${tag}</span>`).join('')}
+                                ${clutchTags.map(tag => `<span class="tag clutch">${tag}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize
+        populateTeamFilters();
+        loadActivities();
+    </script>
+</body>
+</html>
