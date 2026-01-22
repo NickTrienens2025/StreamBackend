@@ -40,7 +40,9 @@ public struct TeamTagSelector: View {
                     HStack(spacing: 8) {
                         ForEach(Array(selectedTeams).sorted(), id: \.self) { team in
                             TeamTag(team: team) {
-                                selectedTeams.remove(team)
+                                withAnimation {
+                                    selectedTeams.remove(team)
+                                }
                             }
                         }
                     }
@@ -51,57 +53,80 @@ public struct TeamTagSelector: View {
             // Search Input
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                 TextField("Add Team...", text: $searchText)
                     .textFieldStyle(PlainTextFieldStyle())
                     .onTapGesture {
-                        isSearching = true
+                        withAnimation {
+                            isSearching = true
+                        }
                     }
                 
                 if !searchText.isEmpty {
                     Button(action: {
-                        searchText = ""
+                        withAnimation {
+                            searchText = ""
+                        }
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .padding(10)
-            .background(Color(.systemGray6))
-            .cornerRadius(10)
+            .padding(12)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
             .padding(.horizontal)
             
             // Autocomplete List
             if isSearching || !searchText.isEmpty {
                 ScrollView {
-                    LazyVStack(alignment: .leading) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(filteredTeams, id: \.self) { team in
                             if !selectedTeams.contains(team) {
                                 Button(action: {
-                                    selectedTeams.insert(team)
-                                    searchText = ""
-                                    // Optional: dismiss search? Keep it for adding more?
+                                    withAnimation {
+                                        selectedTeams.insert(team)
+                                        searchText = ""
+                                        // Optional: dismiss search? Keep it for adding more?
+                                    }
                                 }) {
                                     HStack {
+                                        // Placeholder for Logo
+                                        Circle()
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 24, height: 24)
+                                            .overlay(Text(team.prefix(1)).font(.caption).foregroundColor(.gray))
+                                        
                                         Text(team)
                                             .foregroundColor(.primary)
+                                            .font(.body)
                                         Spacer()
-                                        Image(systemName: "plus.circle")
+                                        Image(systemName: "plus.circle.fill")
                                             .foregroundColor(.blue)
+                                            .font(.title3)
                                     }
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 12)
                                     .padding(.horizontal)
+                                    .contentShape(Rectangle()) // Make full row tappable
                                 }
                                 Divider()
-                                    .padding(.leading)
+                                    .padding(.leading, 50) // Indent divider
                             }
                         }
                     }
                 }
-                .frame(maxHeight: 200) // Limit height
+                .frame(maxHeight: 250) // Limit height
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                .padding(.horizontal)
+                .transition(.opacity)
             }
         }
+        .animation(.easeInOut, value: isSearching)
+        .animation(.easeInOut, value: searchText)
+        .animation(.easeInOut, value: selectedTeams)
     }
 }
 
@@ -121,7 +146,7 @@ struct TeamTag: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .background(Color.blue.opacity(0.1))
         .foregroundColor(.blue)
         .clipShape(Capsule())

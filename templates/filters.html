@@ -39,7 +39,7 @@
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .filter-sections {
@@ -107,7 +107,7 @@
         padding: 15px;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
     }
 
     .results-count {
@@ -174,13 +174,13 @@
         background: white;
         border-radius: 10px;
         padding: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         transition: transform 0.2s, box-shadow 0.2s;
     }
 
     .activity-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
     .game-header {
@@ -572,14 +572,51 @@
     }
 
     function applyFilters() {
-        const selectedTags = getSelectedFilters();
+        const selectedValues = getSelectedFilters();
+
+        // 1. Split into Teams and Other filters
+        const teamFilters = selectedValues.filter(val => val.startsWith('team:'));
+        const otherFilters = selectedValues.filter(val => !val.startsWith('team:'));
+
+        // Extract just the team abbreviations (e.g., "team:DET" -> "DET")
+        const teamCodes = teamFilters.map(val => val.split(':')[1]);
 
         let filtered = allActivities;
 
-        if (selectedTags.length > 0) {
+        if (selectedValues.length > 0) {
             filtered = allActivities.filter(activity => {
                 const activityTags = activity.interest_tags || [];
-                return selectedTags.every(tag => activityTags.includes(tag));
+
+                // 2. Team Match Logic (OR)
+                let teamMatch = true;
+                if (teamCodes.length > 0) {
+                    // Check if activity matches ANY selected team
+                    teamMatch = teamCodes.some(code => {
+                        // Check direct fields
+                        if (activity.home_team === code) return true;
+                        if (activity.away_team === code) return true;
+                        if (activity.scoring_team === code) return true;
+
+                        // Check interest tags (e.g. "team:DET")
+                        if (activityTags.includes(`team:${code}`)) return true;
+
+                        return false;
+                    });
+                }
+
+                // 3. Other Filter Match Logic (OR)
+                let otherMatch = true;
+                if (otherFilters.length > 0) {
+                    // Check if activity matches ANY selected other filter
+                    otherMatch = otherFilters.some(filter => {
+                        // All current other filters are tag-based
+                        return activityTags.includes(filter);
+                    });
+                }
+
+                // Combine with AND
+                // (Must match simple team criteria IF teams selected) AND (Must match other criteria IF others selected)
+                return teamMatch && otherMatch;
             });
         }
 

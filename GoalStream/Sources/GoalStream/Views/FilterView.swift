@@ -2,11 +2,11 @@ import SwiftUI
 
 public struct FilterView: View {
     public let tags: [String]
-    @Binding public var selectedTag: String?
+    @Binding public var selectedTags: Set<String>
     
-    public init(tags: [String], selectedTag: Binding<String?>) {
+    public init(tags: [String], selectedTags: Binding<Set<String>>) {
         self.tags = tags
-        self._selectedTag = selectedTag
+        self._selectedTags = selectedTags
     }
     
     public var body: some View {
@@ -15,12 +15,12 @@ public struct FilterView: View {
                 ForEach(tags, id: \.self) { tag in
                     FilterChip(
                         title: tag,
-                        isSelected: selectedTag == tag,
+                        isSelected: selectedTags.contains(tag),
                         action: {
-                            if selectedTag == tag {
-                                selectedTag = nil
+                            if selectedTags.contains(tag) {
+                                selectedTags.remove(tag)
                             } else {
-                                selectedTag = tag
+                                selectedTags.insert(tag)
                             }
                         }
                     )
@@ -46,6 +46,10 @@ struct FilterChip: View {
                 .background(isSelected ? Color.blue : Color.gray.opacity(0.2))
                 .foregroundColor(isSelected ? .white : .primary)
                 .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1)
+                )
         }
     }
 }

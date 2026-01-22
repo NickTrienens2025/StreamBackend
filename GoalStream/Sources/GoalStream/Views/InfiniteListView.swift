@@ -2,13 +2,13 @@ import SwiftUI
 
 public struct InfiniteListView: View {
     @State private var streamService: StreamService
-    @State private var selectedFilter: String? = nil
+    @State private var selectedFilters: Set<String> = []
     @State private var selectedTeams: Set<String> = []
     
     let config: GoalStreamConfig
     
     // Hardcoded filters for now, or could be passed in
-    let availableFilters = ["All", "Goal", "Save", "Hit", "Fight"] 
+    let availableFilters = ["Goal", "Save", "Hit", "Fight"] 
     
     public init(config: GoalStreamConfig) {
         self.config = config
@@ -19,7 +19,7 @@ public struct InfiniteListView: View {
         VStack(spacing: 0) {
             // Filter Bar
             VStack(spacing: 0) {
-                FilterView(tags: availableFilters, selectedTag: $selectedFilter)
+                FilterView(tags: availableFilters, selectedTags: $selectedFilters)
                     .padding(.vertical, 8)
                 
                 // Team Tag Selector
@@ -65,39 +65,45 @@ public struct InfiniteListView: View {
                 await streamService.fetchActivities(feedId: "nhl")
             }
         }
-        .onChange(of: selectedFilter) { _, _ in }
+        .onChange(of: selectedFilters) { _, _ in }
         .onChange(of: selectedTeams) { _, _ in }
     }
     
     private func shouldShow(_ activity: Activity) -> Bool {
-        // 1. Filter by Event Type
-        if let filter = selectedFilter, filter != "All" {
-            // Simple mapping: check verb or tags
-            if filter == "Goal" { 
-                if activity.verb != "score" { return false }
-            } else if let tags = activity.interestTags {
-                if !tags.contains(where: { $0.localizedCaseInsensitiveContains(filter) }) {
-                   return false 
+        // 1. Filter by Event Type (OR Logic)
+        // If no filters are selected, we show EVERYTHING (acts as "All")
+        // If filters are selected, the activity must match AT LEAST ONE of them.
+        
+        let eventMatch: Bool
+        if selectedFilters.isEmpty {
+            eventMatch = true
+        } else {
+            // Check if activity matches ANY of the selected filters
+            eventMatch = selectedFilters.contains { filter in
+                if filter == "Goal" {
+                    return activity.verb == "score"
+                } else if let tags = activity.interestTags {
+                    return tags.contains(where: { $0.localizedCaseInsensitiveContains(filter) })
                 }
+                return false
             }
         }
         
-        // 2. Filter by Teams (if any selected)
+        if !eventMatch { return false }
+        
+        // 2. Filter by Teams (OR Logic) - if any selected
         if !selectedTeams.isEmpty {
-            // We need to check if this activity is related to any selected team.
-            // Checks: scoringTeam, homeTeam, awayTeam, or interestTags.
+            // We need to check if this activity is related to ANY selected team.
             var matchFound = false
             
+            // Optimization: check if we can find any intersection between selected teams and activity teams
             for team in selectedTeams {
-                // Check direct fields (assuming simplified or full name match)
+                // Check direct fields
                 if let scoring = activity.scoringTeam, scoring.localizedCaseInsensitiveContains(team) { matchFound = true; break }
                 if let home = activity.homeTeam, home.localizedCaseInsensitiveContains(team) { matchFound = true; break }
                 if let away = activity.awayTeam, away.localizedCaseInsensitiveContains(team) { matchFound = true; break }
                 
-                // Check Interest Tags (e.g. "team:DET" vs "Detroit Red Wings")
-                // This is fuzzy. ideally we map "Detroit Red Wings" -> "DET" or check if tag contains part of name..
-                // For now, let's assume loose string matching might work if backend sends full names in tags,
-                // OR we rely on the direct fields above which are more likely to support this.
+                // Check Interest Tags
                 if let tags = activity.interestTags {
                    if tags.contains(where: { $0.localizedCaseInsensitiveContains(team) }) { matchFound = true; break }
                 }
