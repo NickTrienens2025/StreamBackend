@@ -1,0 +1,15 @@
+{
+  "originHash" : "61b0c1bb27baf5da72ece7773bc3adb9cfef8993c8a0aa0c3030cceddeed5bdc",
+  "pins" : [
+    {
+      "identity" : "brightcove-player-sdk-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/brightcove/brightcove-player-sdk-ios.git",
+      "state" : {
+        "revision" : "b11783f3913639ca55c0c9d419662030cab07677",
+        "version" : "6.13.3"
+      }
+    }
+  ],
+  "version" : 3
+}
