@@ -382,3 +382,4 @@ For issues and questions:
 - GetStream Docs: https://getstream.io/activity-feeds/docs/
 - FastAPI Docs: https://fastapi.tiangolo.com/
 - GitHub Issues: https://github.com/NickTrienens2025/StreamBackend/issues
+
