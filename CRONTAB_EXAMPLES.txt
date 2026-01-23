@@ -1,0 +1,156 @@
+# NHL Goals Scraper - Crontab Configuration Examples
+# =====================================================
+#
+# To edit your crontab:
+#   crontab -e
+#
+# To view your current crontab:
+#   crontab -l
+#
+# To view cron logs (varies by OS):
+#   macOS:  log show --predicate 'process == "cron"' --last 1h
+#   Linux:  grep CRON /var/log/syslog
+#
+# Crontab Format:
+#   * * * * * command
+#   │ │ │ │ │
+#   │ │ │ │ └─── Day of week (0-7, Sunday=0 or 7)
+#   │ │ │ └───── Month (1-12)
+#   │ │ └─────── Day of month (1-31)
+#   │ └───────── Hour (0-23)
+#   └─────────── Minute (0-59)
+
+# =====================================================
+# RECOMMENDED SCHEDULES
+# =====================================================
+
+# Run every day at 6:00 AM (after most games have finished)
+0 6 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run twice daily at 6 AM and 6 PM
+0 6,18 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run every 6 hours (at 00:00, 06:00, 12:00, 18:00)
+0 */6 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run every 4 hours
+0 */4 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run at midnight every day
+0 0 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run at 3:30 AM every day
+30 3 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# ADVANCED SCHEDULES
+# =====================================================
+
+# Run every day except Monday at 6 AM
+0 6 * * 2-7 /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run only on weekdays at 6 AM
+0 6 * * 1-5 /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run only on weekends at 8 AM
+0 8 * * 0,6 /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run every 2 hours during hockey season (October-June)
+0 */2 * 10-12,1-6 * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Run every 30 minutes (for real-time updates)
+*/30 * * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# WITH EMAIL NOTIFICATIONS
+# =====================================================
+
+# Send output to email (requires mail configured)
+0 6 * * * /path/to/Stream.io/backend/run_scraper_cron.sh 2>&1 | mail -s "NHL Scraper Report" your@email.com
+
+# Only send email on errors
+0 6 * * * /path/to/Stream.io/backend/run_scraper_cron.sh || echo "Scraper failed" | mail -s "NHL Scraper ERROR" your@email.com
+
+# =====================================================
+# WITH ENVIRONMENT VARIABLES
+# =====================================================
+
+# Set environment variables inline
+0 6 * * * STREAM_API_KEY=xxx STREAM_API_SECRET=yyy /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# Load from .env file (handled by run_scraper_cron.sh)
+0 6 * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# COMPLETE EXAMPLE
+# =====================================================
+
+# NHL Goals Scraper - Run daily at 6 AM
+# Logs are automatically saved to backend/logs/
+# Progress is tracked in S3
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+
+# Run scraper daily at 6 AM
+0 6 * * * /Users/ntrienens/Projects/python/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# TESTING YOUR CRON JOB
+# =====================================================
+
+# Test by running every minute temporarily
+# (REMOVE THIS AFTER TESTING!)
+# */1 * * * * /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# TROUBLESHOOTING
+# =====================================================
+
+# If cron job isn't running:
+# 1. Check cron is running:
+#    macOS: sudo launchctl list | grep cron
+#    Linux: sudo systemctl status cron
+#
+# 2. Check script has execute permissions:
+#    ls -la /path/to/Stream.io/backend/run_scraper_cron.sh
+#
+# 3. Use absolute paths (not relative paths like ~/)
+#
+# 4. Check logs:
+#    tail -f /path/to/Stream.io/backend/logs/scraper_*.log
+#
+# 5. Test script manually first:
+#    /path/to/Stream.io/backend/run_scraper_cron.sh
+#
+# 6. Add explicit PATH and SHELL to crontab (see example above)
+#
+# 7. Redirect output to check for errors:
+#    */5 * * * * /path/to/run_scraper_cron.sh > /tmp/cron_test.log 2>&1
+
+# =====================================================
+# USEFUL CRON TIME EXPRESSIONS
+# =====================================================
+
+# @reboot       - Run once at startup
+# @yearly       - Run once a year (0 0 1 1 *)
+# @annually     - Same as @yearly
+# @monthly      - Run once a month (0 0 1 * *)
+# @weekly       - Run once a week (0 0 * * 0)
+# @daily        - Run once a day (0 0 * * *)
+# @midnight     - Same as @daily
+# @hourly       - Run once an hour (0 * * * *)
+
+# Example using shortcuts:
+# @daily /path/to/Stream.io/backend/run_scraper_cron.sh
+
+# =====================================================
+# NOTES
+# =====================================================
+
+# - Scraper automatically resumes from last completed date
+# - Progress is tracked in S3 (scrape_progress.json)
+# - Logs are kept for 30 days (automatically cleaned up)
+# - Duplicate goals are automatically skipped
+# - Failed dates are tracked and can be retried manually
+# - Rate limiting is built-in (100ms between games, 500ms between uploads)
