@@ -379,3 +379,69 @@ async def get_storage_data(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch data: {str(e)}")
+
+
+@router.get("/activities/filters/options")
+async def get_filter_options():
+    """
+    Get available filter options and metadata for frontend clients
+    """
+    teams = [
+        'ANA', 'BOS', 'BUF', 'CAR', 'CBJ', 'CGY', 'CHI', 'COL', 'DAL', 'DET',
+        'EDM', 'FLA', 'LAK', 'MIN', 'MTL', 'NJD', 'NSH', 'NYI', 'NYR', 'OTT',
+        'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR', 'VAN', 'VGK', 'WPG', 'WSH'
+    ]
+    
+    return {
+        "success": True,
+        "groups": [
+            {
+                "title": "Teams",
+                "apiKey": "team",
+                "options": [{"label": team, "id": team} for team in teams]
+            },
+            {
+                "title": "Goal Types",
+                "apiKey": "interest_tag",
+                "options": [
+                    {"label": "Game Winner", "id": "game-winner"},
+                    {"label": "Overtime", "id": "overtime"},
+                    {"label": "Shootout", "id": "shootout"},
+                    {"label": "Empty Net", "id": "empty-net"},
+                    {"label": "Penalty Shot", "id": "penalty-shot"},
+                    {"label": "Power Play", "id": "powerplay"},
+                    {"label": "Short Handed", "id": "shorthanded"}
+                ]
+            },
+            {
+                "title": "Clutch Situations",
+                "apiKey": "interest_tag",
+                "options": [
+                    {"label": "Tying Goal", "id": "tying-goal"},
+                    {"label": "Go-Ahead Goal", "id": "go-ahead-goal"},
+                    {"label": "Comeback Goal", "id": "comeback"},
+                    {"label": "Late Period (<2 min)", "id": "late-period"},
+                    {"label": "Buzzer Beater (<30 sec)", "id": "buzzer-beater"},
+                    {"label": "Close Game (1-goal diff)", "id": "close-game"},
+                    {"label": "First Goal of Game", "id": "first-goal"}
+                ]
+            },
+            {
+                "title": "Shot Types",
+                "apiKey": "interest_tag",
+                "options": [
+                    {"label": "Wrist Shot", "id": "shot:wrist"},
+                    {"label": "Snap Shot", "id": "shot:snap"},
+                    {"label": "Slap Shot", "id": "shot:slap"},
+                    {"label": "Backhand", "id": "shot:backhand"},
+                    {"label": "Tip-In", "id": "shot:tip-in"},
+                    {"label": "Wrap-Around", "id": "shot:wrap-around"},
+                    {"label": "Deflected", "id": "shot:deflected"}
+                ]
+            }
+        ],
+        "sort_options": [
+            {"label": "Latest First", "id": "time", "default": True},
+            {"label": "Most Important", "id": "score", "default": False}
+        ]
+    }
