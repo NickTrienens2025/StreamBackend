@@ -615,6 +615,40 @@ async def track_impression(request: ImpressionRequest):
         raise HTTPException(status_code=500, detail=f"Failed to track impression: {str(e)}")
 
 
+@router.post("/analytics/reaction")
+async def track_reaction_legacy(request: ReactionRequest):
+    """
+    Track a reaction (legacy endpoint for iOS app compatibility)
+
+    This is an alias for /reactions/add to support existing iOS app code.
+    The iOS app calls this endpoint when a user likes/hearts an activity.
+
+    **Example:**
+    ```json
+    {
+        "user_id": "ntrienens@nhl.com",
+        "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
+        "kind": "like"
+    }
+    ```
+    """
+    try:
+        reaction = await stream_client.add_reaction(
+            user_id=request.user_id,
+            kind=request.kind,
+            activity_id=request.activity_id,
+            data=request.data
+        )
+
+        return {
+            "success": True,
+            "reaction": reaction,
+            "message": "Reaction tracked"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to track reaction: {str(e)}")
+
+
 @router.get("/analytics/user/{user_id}/profile")
 async def get_user_engagement_profile(user_id: str = Path(...)):
     """
