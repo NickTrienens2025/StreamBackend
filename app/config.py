@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     S3_BASE_URL: str = "https://s3.foreverflow.click/api/hockeyGoals"
     S3_ENABLED: bool = True
 
+    # Startup Scraper
+    STARTUP_SCRAPER_ENABLED: bool = True
+    STARTUP_SCRAPER_DAYS_BACK: int = 3
+
     class Config:
         env_file = ".env"
         case_sensitive = True

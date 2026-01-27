@@ -2,14 +2,29 @@
 API routes for GetStream Activity Feeds
 Platform-agnostic endpoints for querying feeds
 """
-from fastapi import APIRouter, Query, HTTPException, Path
-from typing import Optional, List
+from fastapi import APIRouter, Query, HTTPException, Path, Body
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 from app.stream_client import stream_client
 from app.s3_storage import s3_storage
 from app.config import settings
 import uuid
 
 router = APIRouter()
+
+
+# Request models
+class ImpressionRequest(BaseModel):
+    user_id: str
+    activity_id: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class ReactionRequest(BaseModel):
+    user_id: str
+    activity_id: str
+    kind: str = "like"
+    data: Optional[Dict[str, Any]] = None
 
 
 @router.get("/auth/default-user")
@@ -502,3 +517,300 @@ async def get_game_status(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to check game status: {str(e)}")
+
+
+@router.get("/scraper/startup-status")
+async def get_startup_scraper_status():
+    """
+    Get the status of the most recent startup scraper run
+
+    This endpoint returns information about the scraper that runs
+    automatically when the service starts up.
+
+    **Example:**
+    - `GET /api/v1/scraper/startup-status` - Get startup scraper status
+    """
+    try:
+        from app.startup_scraper import get_startup_status
+
+        status = await get_startup_status()
+
+        return {
+            "success": True,
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get startup status: {str(e)}")
+
+
+@router.get("/scraper/startup-history")
+async def get_startup_scraper_history():
+    """
+    Get the history of startup scraper runs
+
+    Returns the last 50 startup scraper runs with their results.
+
+    **Example:**
+    - `GET /api/v1/scraper/startup-history` - Get startup run history
+    """
+    if not settings.S3_ENABLED:
+        raise HTTPException(status_code=503, detail="S3 storage is disabled")
+
+    try:
+        history = await s3_storage.read('scraper_startup_history.json')
+
+        if not history:
+            return {
+                "success": True,
+                "runs": [],
+                "message": "No startup history found"
+            }
+
+        return {
+            "success": True,
+            "runs": history.get('runs', []),
+            "last_updated": history.get('last_updated')
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get startup history: {str(e)}")
+
+
+# Analytics Endpoints
+
+@router.post("/analytics/impression")
+async def track_impression(request: ImpressionRequest):
+    """
+    Track an impression (view) of an activity
+
+    Called by the iOS app when an activity scrolls into view (60% visible).
+
+    **Example:**
+    ```json
+    {
+        "user_id": "user123",
+        "activity_id": "goal:2025020826_123",
+        "metadata": {
+            "team": "CGY",
+            "player_id": "8477018",
+            "goal_type": "go-ahead-goal"
+        }
+    }
+    ```
+    """
+    try:
+        from app.analytics import get_analytics_tracker
+
+        tracker = get_analytics_tracker()
+        success = await tracker.track_impression(
+            user_id=request.user_id,
+            activity_id=request.activity_id,
+            metadata=request.metadata
+        )
+
+        return {
+            "success": success,
+            "message": "Impression tracked" if success else "Failed to track impression"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to track impression: {str(e)}")
+
+
+@router.get("/analytics/user/{user_id}/profile")
+async def get_user_engagement_profile(user_id: str = Path(...)):
+    """
+    Get a user's engagement profile for personalization
+
+    Returns viewing preferences based on impression history.
+
+    **Example:**
+    - `GET /api/v1/analytics/user/user123/profile`
+    """
+    try:
+        from app.analytics import get_analytics_tracker
+
+        tracker = get_analytics_tracker()
+        profile = await tracker.get_user_engagement_profile(user_id)
+
+        return {
+            "success": True,
+            "profile": profile
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get engagement profile: {str(e)}")
+
+
+@router.get("/analytics/user/{user_id}/impressions")
+async def get_user_impressions(user_id: str = Path(...)):
+    """
+    Get all impressions for a user
+
+    **Example:**
+    - `GET /api/v1/analytics/user/user123/impressions`
+    """
+    try:
+        from app.analytics import get_analytics_tracker
+
+        tracker = get_analytics_tracker()
+        impressions = await tracker.get_user_impressions(user_id)
+
+        return {
+            "success": True,
+            "impressions": impressions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get impressions: {str(e)}")
+
+
+# Reactions Endpoints
+
+@router.post("/reactions/add")
+async def add_reaction(request: ReactionRequest):
+    """
+    Add a reaction (like, heart, etc.) to an activity
+
+    **Example:**
+    ```json
+    {
+        "user_id": "user123",
+        "activity_id": "goal:2025020826_123",
+        "kind": "like"
+    }
+    ```
+    """
+    try:
+        reaction = await stream_client.add_reaction(
+            user_id=request.user_id,
+            kind=request.kind,
+            activity_id=request.activity_id,
+            data=request.data
+        )
+
+        return {
+            "success": True,
+            "reaction": reaction
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add reaction: {str(e)}")
+
+
+@router.delete("/reactions/{reaction_id}")
+async def remove_reaction(reaction_id: str = Path(...)):
+    """
+    Remove a reaction
+
+    **Example:**
+    - `DELETE /api/v1/reactions/abc123`
+    """
+    try:
+        success = await stream_client.remove_reaction(reaction_id)
+
+        return {
+            "success": success,
+            "message": "Reaction removed" if success else "Failed to remove reaction"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to remove reaction: {str(e)}")
+
+
+@router.get("/reactions/activity/{activity_id}")
+async def get_activity_reactions(
+    activity_id: str = Path(...),
+    kind: Optional[str] = Query(None, description="Filter by reaction kind (like, heart, etc.)")
+):
+    """
+    Get all reactions for an activity
+
+    **Example:**
+    - `GET /api/v1/reactions/activity/goal:2025020826_123`
+    - `GET /api/v1/reactions/activity/goal:2025020826_123?kind=like`
+    """
+    try:
+        reactions = await stream_client.get_reactions(activity_id, kind=kind)
+
+        return {
+            "success": True,
+            "activity_id": activity_id,
+            "count": len(reactions),
+            "reactions": reactions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get reactions: {str(e)}")
+
+
+@router.get("/reactions/user/{user_id}/activity/{activity_id}")
+async def get_user_reaction_for_activity(
+    user_id: str = Path(...),
+    activity_id: str = Path(...),
+    kind: str = Query("like", description="Reaction kind")
+):
+    """
+    Check if a user has reacted to an activity
+
+    Returns the user's reaction if it exists.
+
+    **Example:**
+    - `GET /api/v1/reactions/user/user123/activity/goal:2025020826_123?kind=like`
+    """
+    try:
+        reaction = await stream_client.get_user_reaction(user_id, activity_id, kind)
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "activity_id": activity_id,
+            "has_reacted": reaction is not None,
+            "reaction": reaction
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check user reaction: {str(e)}")
+
+
+# Personalized Feed Endpoints
+
+@router.get("/feeds/{feed_id}/personalized")
+async def get_personalized_feed(
+    feed_id: str = Path(..., description="Feed ID (e.g., 'nhl')"),
+    user_id: str = Query(..., description="User ID for personalization"),
+    feed_group: str = Query(settings.DEFAULT_FEED_GROUP),
+    limit: int = Query(50, ge=1, le=settings.MAX_LIMIT)
+):
+    """
+    Get a personalized feed for a user with reactions
+
+    This endpoint returns activities enriched with:
+    - User's own reactions (own_reactions)
+    - Reaction counts (reaction_counts)
+    - Whether the user has liked each activity
+
+    **Example:**
+    - `GET /api/v1/feeds/nhl/personalized?user_id=user123&limit=50`
+    """
+    try:
+        # Get activities with reaction enrichment
+        result = await stream_client.get_activities_with_reactions(
+            feed_group=feed_group,
+            feed_id=feed_id,
+            user_id=user_id,
+            limit=limit
+        )
+
+        # Get user's engagement profile for additional personalization
+        from app.analytics import get_analytics_tracker
+        tracker = get_analytics_tracker()
+        profile = await tracker.get_user_engagement_profile(user_id)
+
+        return {
+            "success": True,
+            "feed": f"{feed_group}:{feed_id}",
+            "user_id": user_id,
+            "count": len(result.get('results', [])),
+            "data": result.get('results', []),
+            "next": result.get('next'),
+            "personalization": {
+                "top_teams": profile.get('preferences', {}).get('teams', [])[:3],
+                "total_views": profile.get('total_views', 0)
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch personalized feed: {str(e)}")

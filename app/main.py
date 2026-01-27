@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.api import router as api_router
+import asyncio
 
 # Create FastAPI app
 app = FastAPI(
@@ -17,6 +18,36 @@ app = FastAPI(
     description="Platform-agnostic backend API for GetStream Activity Feeds",
     debug=settings.DEBUG
 )
+
+
+# Startup event handler
+@app.on_event("startup")
+async def startup_event():
+    """Run scraper on startup"""
+    print("\n" + "=" * 60)
+    print("🏒 NHL Goals Backend Starting Up")
+    print("=" * 60)
+
+    if not settings.STARTUP_SCRAPER_ENABLED:
+        print("⏸️  Startup scraper disabled (set STARTUP_SCRAPER_ENABLED=true to enable)")
+        print("=" * 60 + "\n")
+        return
+
+    from app.startup_scraper import run_startup_scraper, save_startup_run_history
+
+    # Run scraper in background (non-blocking)
+    async def background_scraper():
+        try:
+            status = await run_startup_scraper(days_back=settings.STARTUP_SCRAPER_DAYS_BACK)
+            await save_startup_run_history(status)
+        except Exception as e:
+            print(f"❌ Background scraper error: {str(e)}")
+
+    # Start scraper as background task
+    asyncio.create_task(background_scraper())
+
+    print(f"✅ Server ready - scraper running in background (checking last {settings.STARTUP_SCRAPER_DAYS_BACK} days)")
+    print("=" * 60 + "\n")
 
 # Configure CORS
 allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS != "*" else ["*"]

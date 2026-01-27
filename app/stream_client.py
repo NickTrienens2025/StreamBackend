@@ -189,6 +189,150 @@ class StreamClient:
         """
         return self.client.create_user_token(user_id)
 
+    async def add_reaction(
+        self,
+        user_id: str,
+        kind: str,
+        activity_id: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Add a reaction to an activity
+
+        Args:
+            user_id: User adding the reaction
+            kind: Reaction type (e.g., 'like', 'heart', 'comment')
+            activity_id: Activity ID
+            data: Optional additional data
+
+        Returns:
+            Created reaction
+        """
+        reaction_data = {
+            'kind': kind,
+            'activity_id': activity_id,
+            'user_id': user_id
+        }
+
+        if data:
+            reaction_data['data'] = data
+
+        response = self.client.reactions.add(kind, activity_id, user_id, data=data or {})
+        return response
+
+    async def remove_reaction(self, reaction_id: str) -> bool:
+        """
+        Remove a reaction
+
+        Args:
+            reaction_id: Reaction ID to remove
+
+        Returns:
+            Success status
+        """
+        try:
+            self.client.reactions.delete(reaction_id)
+            return True
+        except Exception:
+            return False
+
+    async def get_reactions(
+        self,
+        activity_id: str,
+        kind: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get reactions for an activity
+
+        Args:
+            activity_id: Activity ID
+            kind: Optional filter by reaction kind
+            user_id: Optional filter by user
+
+        Returns:
+            List of reactions
+        """
+        params = {
+            'activity_id': activity_id,
+            'limit': 100
+        }
+
+        if kind:
+            params['kind'] = kind
+
+        response = self.client.reactions.filter(activity_id=activity_id, kind=kind, limit=100)
+        reactions = response.get('results', [])
+
+        if user_id:
+            reactions = [r for r in reactions if r.get('user_id') == user_id]
+
+        return reactions
+
+    async def get_user_reaction(
+        self,
+        user_id: str,
+        activity_id: str,
+        kind: str = 'like'
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a user's specific reaction on an activity
+
+        Args:
+            user_id: User ID
+            activity_id: Activity ID
+            kind: Reaction kind
+
+        Returns:
+            Reaction if exists, None otherwise
+        """
+        reactions = await self.get_reactions(activity_id, kind=kind, user_id=user_id)
+        return reactions[0] if reactions else None
+
+    async def get_activities_with_reactions(
+        self,
+        feed_group: str,
+        feed_id: str,
+        user_id: str,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get activities enriched with user's reaction state
+
+        Args:
+            feed_group: Feed group name
+            feed_id: Feed ID
+            user_id: User ID to get reactions for
+            limit: Number of activities
+            offset: Pagination offset
+
+        Returns:
+            Activities with reaction data
+        """
+        # Get activities with enrichment
+        feed = self.get_feed(feed_group, feed_id)
+
+        options = {
+            'limit': min(limit, settings.MAX_LIMIT),
+            'offset': offset,
+            'enrich': True,
+            'reactions': {
+                'recent': True,
+                'own': True,
+                'counts': True
+            },
+            'user_id': user_id  # Important for own_reactions
+        }
+
+        response = feed.get(**options)
+
+        return {
+            'results': response.get('results', []),
+            'next': response.get('next'),
+            'duration': response.get('duration')
+        }
+
 
 # Singleton client instance
 stream_client = StreamClient()
