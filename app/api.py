@@ -678,10 +678,15 @@ async def track_reaction_legacy(request: ReactionRequest):
     ```
     """
     try:
+        user_id = request.get_user_id()
+        activity_id = request.get_activity_id()
+
+        print(f"💙 Reaction (legacy): user={user_id}, activity={activity_id}, kind={request.kind}")
+
         reaction = await stream_client.add_reaction(
-            user_id=request.get_user_id(),
+            user_id=user_id,
             kind=request.kind,
-            activity_id=request.get_activity_id(),
+            activity_id=activity_id,
             data=request.data
         )
 
@@ -691,7 +696,18 @@ async def track_reaction_legacy(request: ReactionRequest):
             "message": "Reaction tracked"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to track reaction: {str(e)}")
+        error_msg = str(e)
+        print(f"❌ Reaction (legacy) failed: {error_msg}")
+
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Failed to track reaction",
+                "message": error_msg,
+                "activity_id": request.get_activity_id(),
+                "user_id": request.get_user_id()
+            }
+        )
 
 
 @router.get("/analytics/user/{user_id}/profile")
@@ -757,19 +773,38 @@ async def add_reaction(request: ReactionRequest):
     ```
     """
     try:
+        user_id = request.get_user_id()
+        activity_id = request.get_activity_id()
+
+        print(f"💙 Reaction request: user={user_id}, activity={activity_id}, kind={request.kind}")
+
         reaction = await stream_client.add_reaction(
-            user_id=request.get_user_id(),
+            user_id=user_id,
             kind=request.kind,
-            activity_id=request.get_activity_id(),
+            activity_id=activity_id,
             data=request.data
         )
 
         return {
             "success": True,
-            "reaction": reaction
+            "reaction": reaction,
+            "message": f"Reaction '{request.kind}' added successfully"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add reaction: {str(e)}")
+        error_msg = str(e)
+        print(f"❌ Reaction failed: {error_msg}")
+
+        # Return more detailed error
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Failed to add reaction",
+                "message": error_msg,
+                "activity_id": request.get_activity_id(),
+                "user_id": request.get_user_id(),
+                "kind": request.kind
+            }
+        )
 
 
 @router.delete("/reactions/{reaction_id}")

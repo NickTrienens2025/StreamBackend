@@ -208,17 +208,26 @@ class StreamClient:
         Returns:
             Created reaction
         """
-        reaction_data = {
-            'kind': kind,
-            'activity_id': activity_id,
-            'user_id': user_id
-        }
+        try:
+            print(f"🎯 Adding reaction: kind={kind}, activity={activity_id}, user={user_id}")
 
-        if data:
-            reaction_data['data'] = data
+            # GetStream SDK: reactions.add(kind, activity_id, user_id, data={}, target_feeds=[])
+            response = self.client.reactions.add(
+                kind=kind,
+                activity_id=activity_id,
+                user_id=user_id,
+                data=data or {}
+            )
 
-        response = self.client.reactions.add(kind, activity_id, user_id, data=data or {})
-        return response
+            print(f"✅ Reaction added successfully: {response.get('id')}")
+            return response
+
+        except Exception as e:
+            print(f"❌ Failed to add reaction: {str(e)}")
+            print(f"   Activity ID: {activity_id}")
+            print(f"   User ID: {user_id}")
+            print(f"   Kind: {kind}")
+            raise Exception(f"GetStream reaction error: {str(e)}")
 
     async def remove_reaction(self, reaction_id: str) -> bool:
         """
