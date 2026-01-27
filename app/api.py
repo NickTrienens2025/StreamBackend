@@ -4,47 +4,19 @@ Platform-agnostic endpoints for querying feeds
 """
 from fastapi import APIRouter, Query, HTTPException, Path, Body
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel
+from app.models import (
+    ImpressionRequest,
+    ReactionRequest,
+    ReactionResponse,
+    ImpressionResponse,
+    ErrorDetail
+)
 from app.stream_client import stream_client
 from app.s3_storage import s3_storage
 from app.config import settings
 import uuid
 
 router = APIRouter()
-
-
-# Request models
-class ImpressionRequest(BaseModel):
-    user_id: Optional[str] = None
-    userId: Optional[str] = None  # Support both snake_case and camelCase
-    activity_id: Optional[str] = None
-    activityId: Optional[str] = None  # Support both formats
-    metadata: Optional[Dict[str, Any]] = None
-
-    def get_user_id(self) -> str:
-        """Get user_id from either format"""
-        return self.user_id or self.userId or "unknown"
-
-    def get_activity_id(self) -> str:
-        """Get activity_id from either format"""
-        return self.activity_id or self.activityId or "unknown"
-
-
-class ReactionRequest(BaseModel):
-    user_id: Optional[str] = None
-    userId: Optional[str] = None  # Support both formats
-    activity_id: Optional[str] = None
-    activityId: Optional[str] = None  # Support both formats
-    kind: str = "like"
-    data: Optional[Dict[str, Any]] = None
-
-    def get_user_id(self) -> str:
-        """Get user_id from either format"""
-        return self.user_id or self.userId or "unknown"
-
-    def get_activity_id(self) -> str:
-        """Get activity_id from either format"""
-        return self.activity_id or self.activityId or "unknown"
 
 
 @router.get("/auth/default-user")
@@ -595,6 +567,165 @@ async def get_startup_scraper_history():
         raise HTTPException(status_code=500, detail=f"Failed to get startup history: {str(e)}")
 
 
+# API Documentation Endpoint
+
+@router.get("/api-guide")
+async def api_guide():
+    """
+    Complete API guide for impression tracking and reactions
+
+    Returns comprehensive documentation on data formats, requirements,
+    and common mistakes to avoid.
+    """
+    return {
+        "success": True,
+        "version": "1.0",
+        "endpoints": {
+            "impressions": {
+                "endpoint": "POST /api/v1/analytics/impression",
+                "description": "Track when a user views an activity",
+                "requirements": {
+                    "user_id": {
+                        "format": "Any string (emails allowed, auto-sanitized)",
+                        "examples": ["ntrienens@nhl.com", "user123", "john_doe"],
+                        "accepts": ["user_id", "userId"]
+                    },
+                    "activity_id": {
+                        "format": "GetStream UUID (activity.id field)",
+                        "example": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                        "accepts": ["activity_id", "activityId"],
+                        "important": "Use activity.id (UUID), NOT activity.foreign_id"
+                    },
+                    "metadata": {
+                        "format": "Optional object with tracking data",
+                        "example": {"team": "CGY", "player_id": "8477018"}
+                    }
+                },
+                "example_request": {
+                    "user_id": "ntrienens@nhl.com",
+                    "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                    "metadata": {"team": "CGY"}
+                }
+            },
+            "reactions": {
+                "add": {
+                    "endpoint": "POST /api/v1/reactions/add",
+                    "description": "Add a like/heart reaction to an activity",
+                    "requirements": {
+                        "user_id": {
+                            "format": "Any string (emails allowed, auto-sanitized)",
+                            "examples": ["ntrienens@nhl.com", "user123"],
+                            "accepts": ["user_id", "userId"],
+                            "note": "Backend auto-sanitizes: @ → _at_, . → _"
+                        },
+                        "activity_id": {
+                            "format": "GetStream UUID (REQUIRED)",
+                            "example": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                            "accepts": ["activity_id", "activityId"],
+                            "critical": "MUST be activity.id (UUID), NOT activity.foreign_id",
+                            "why": "GetStream reactions require the internal UUID"
+                        },
+                        "kind": {
+                            "format": "Reaction type",
+                            "default": "like",
+                            "options": ["like", "heart", "love", "comment", "share"]
+                        }
+                    },
+                    "example_request": {
+                        "user_id": "ntrienens@nhl.com",
+                        "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                        "kind": "like"
+                    }
+                },
+                "remove": {
+                    "endpoint": "DELETE /api/v1/reactions/{reaction_id}",
+                    "description": "Remove a reaction",
+                    "note": "Use the reaction.id returned when adding"
+                },
+                "check": {
+                    "endpoint": "GET /api/v1/reactions/user/{user_id}/activity/{activity_id}",
+                    "description": "Check if user has reacted to activity"
+                }
+            }
+        },
+        "common_mistakes": {
+            "wrong_activity_id": {
+                "mistake": "Using activity.foreign_id instead of activity.id",
+                "wrong": "goal:2025020829_576",
+                "correct": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                "error": "activity_id must be a valid UUID version 1",
+                "solution": "Use activity.id field from GetStream response"
+            },
+            "special_characters_in_user_id": {
+                "mistake": "Worrying about @ or . in user IDs",
+                "note": "Not a problem anymore! Backend auto-sanitizes",
+                "example": "ntrienens@nhl.com → ntrienens_at_nhl_com"
+            }
+        },
+        "ios_integration": {
+            "activity_model": """
+struct StreamActivity: Codable {
+    let id: String              // ✅ USE THIS for reactions
+    let foreignId: String       // ❌ NOT this
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case foreignId = "foreign_id"
+    }
+}""",
+            "add_reaction": """
+func addLike(activity: StreamActivity, userEmail: String) async {
+    let url = URL(string: "\\(apiBase)/reactions/add")!
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let body: [String: Any] = [
+        "user_id": userEmail,           // ✅ Email is fine
+        "activity_id": activity.id,     // ✅ Use UUID
+        "kind": "like"
+    ]
+
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    let (data, _) = try await URLSession.shared.data(for: request)
+}""",
+            "track_impression": """
+func trackView(activity: StreamActivity, userEmail: String) async {
+    let url = URL(string: "\\(apiBase)/analytics/impression")!
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let body: [String: Any] = [
+        "user_id": userEmail,
+        "activity_id": activity.id,     // ✅ Use UUID
+        "metadata": [
+            "team": activity.scoringTeam,
+            "player_id": activity.scoringPlayerId
+        ]
+    ]
+
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    let (data, _) = try await URLSession.shared.data(for: request)
+}"""
+        },
+        "data_format_summary": {
+            "always_use": {
+                "activity_id": "activity.id (UUID like 'b227dc00...')",
+                "user_id": "Any string (emails work, auto-sanitized)"
+            },
+            "never_use": {
+                "activity_id": "activity.foreign_id (like 'goal:xxx')"
+            }
+        },
+        "help_endpoints": [
+            "GET /api/v1/api-guide - This complete guide",
+            "GET /api/v1/reactions/help - Reaction-specific help",
+            "POST /api/v1/analytics/debug - Debug request format"
+        ]
+    }
+
+
 # Analytics Endpoints
 
 @router.post("/analytics/debug")
@@ -613,20 +744,23 @@ async def debug_analytics_request(request: Dict[str, Any] = Body(...)):
     }
 
 
-@router.post("/analytics/impression")
+@router.post("/analytics/impression", response_model=ImpressionResponse)
 async def track_impression(request: ImpressionRequest):
     """
     Track an impression (view) of an activity
 
-    Called by the iOS app when an activity scrolls into view (60% visible).
+    **Requirements:**
+    - `user_id` (or `userId`): Any string, emails allowed (auto-sanitized)
+    - `activity_id` (or `activityId`): GetStream UUID (activity.id field)
+    - `metadata` (optional): Additional tracking data
 
-    Accepts both snake_case (user_id, activity_id) and camelCase (userId, activityId).
+    **Important:** Use `activity.id` (UUID), NOT `activity.foreign_id`
 
     **Example:**
     ```json
     {
-        "user_id": "user123",
-        "activity_id": "goal:2025020826_123",
+        "user_id": "ntrienens@nhl.com",
+        "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
         "metadata": {
             "team": "CGY",
             "player_id": "8477018",
@@ -634,12 +768,33 @@ async def track_impression(request: ImpressionRequest):
         }
     }
     ```
+
+    **iOS Example:**
+    ```swift
+    let body: [String: Any] = [
+        "user_id": userEmail,
+        "activity_id": activity.id,  // ✅ Use UUID
+        "metadata": ["team": activity.scoringTeam]
+    ]
+    ```
     """
     try:
         from app.analytics import get_analytics_tracker
 
         user_id = request.get_user_id()
         activity_id = request.get_activity_id()
+
+        # Validate we have required fields
+        if user_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail="Missing user_id or userId field"
+            )
+        if activity_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail="Missing activity_id or activityId field"
+            )
 
         # Debug logging
         print(f"📊 Impression: user={user_id}, activity={activity_id}")
@@ -651,22 +806,34 @@ async def track_impression(request: ImpressionRequest):
             metadata=request.metadata
         )
 
-        return {
-            "success": success,
-            "message": "Impression tracked" if success else "Failed to track impression"
-        }
+        return ImpressionResponse(
+            success=success,
+            message="Impression tracked successfully" if success else "Failed to track impression"
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Impression tracking error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to track impression: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to track impression: {str(e)}"
+        )
 
 
-@router.post("/analytics/reaction")
+@router.post("/analytics/reaction", response_model=ReactionResponse)
 async def track_reaction_legacy(request: ReactionRequest):
     """
     Track a reaction (legacy endpoint for iOS app compatibility)
 
-    This is an alias for /reactions/add to support existing iOS app code.
-    The iOS app calls this endpoint when a user likes/hearts an activity.
+    **This is an alias for POST /api/v1/reactions/add**
+
+    **Requirements:**
+    - `user_id` (or `userId`): Any string, emails allowed (auto-sanitized)
+    - `activity_id` (or `activityId`): GetStream UUID (activity.id field) - REQUIRED
+    - `kind`: Reaction type (default: "like")
+
+    **CRITICAL:** Must use `activity.id` (UUID), NOT `activity.foreign_id`
 
     **Example:**
     ```json
@@ -676,10 +843,39 @@ async def track_reaction_legacy(request: ReactionRequest):
         "kind": "like"
     }
     ```
+
+    **iOS Example:**
+    ```swift
+    let body: [String: Any] = [
+        "user_id": userEmail,
+        "activity_id": activity.id,  // ✅ Use UUID, NOT foreign_id
+        "kind": "like"
+    ]
+    ```
     """
     try:
         user_id = request.get_user_id()
         activity_id = request.get_activity_id()
+
+        # Validate required fields
+        if user_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Missing user_id",
+                    "message": "Request must include 'user_id' or 'userId' field",
+                    "help": "GET /api/v1/api-guide for documentation"
+                }
+            )
+        if activity_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Missing activity_id",
+                    "message": "Request must include 'activity_id' or 'activityId' field",
+                    "help": "GET /api/v1/api-guide for documentation"
+                }
+            )
 
         print(f"💙 Reaction (legacy): user={user_id}, activity={activity_id}, kind={request.kind}")
 
@@ -690,11 +886,14 @@ async def track_reaction_legacy(request: ReactionRequest):
             data=request.data
         )
 
-        return {
-            "success": True,
-            "reaction": reaction,
-            "message": "Reaction tracked"
-        }
+        return ReactionResponse(
+            success=True,
+            reaction=reaction,
+            message=f"Reaction '{request.kind}' added successfully"
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         error_msg = str(e)
         print(f"❌ Reaction (legacy) failed: {error_msg}")
@@ -705,7 +904,8 @@ async def track_reaction_legacy(request: ReactionRequest):
                 "error": "Failed to track reaction",
                 "message": error_msg,
                 "activity_id": request.get_activity_id(),
-                "user_id": request.get_user_id()
+                "user_id": request.get_user_id(),
+                "help": "GET /api/v1/api-guide for troubleshooting"
             }
         )
 
@@ -815,23 +1015,78 @@ let body: [String: Any] = [
     }
 
 
-@router.post("/reactions/add")
+@router.post("/reactions/add", response_model=ReactionResponse)
 async def add_reaction(request: ReactionRequest):
     """
     Add a reaction (like, heart, etc.) to an activity
 
+    **Requirements:**
+    - `user_id` (or `userId`): Any string, emails allowed (auto-sanitized)
+    - `activity_id` (or `activityId`): GetStream UUID (activity.id field) - REQUIRED
+    - `kind`: Reaction type (default: "like")
+
+    **CRITICAL:** Must use `activity.id` (UUID), NOT `activity.foreign_id`
+    - ✅ Correct: `"b227dc00-fb1f-11f0-8080-8001429e601f"` (from activity.id)
+    - ❌ Wrong: `"goal:2025020829_576"` (from activity.foreign_id)
+
     **Example:**
     ```json
     {
-        "user_id": "user123",
-        "activity_id": "goal:2025020826_123",
+        "user_id": "ntrienens@nhl.com",
+        "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
         "kind": "like"
+    }
+    ```
+
+    **iOS Example:**
+    ```swift
+    let body: [String: Any] = [
+        "user_id": userEmail,
+        "activity_id": activity.id,  // ✅ Use UUID
+        "kind": "like"
+    ]
+    ```
+
+    **Returns:**
+    ```json
+    {
+        "success": true,
+        "message": "Reaction 'like' added successfully",
+        "reaction": {
+            "id": "reaction_abc123",
+            "kind": "like",
+            "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
+            "user_id": "ntrienens_at_nhl_com"
+        }
     }
     ```
     """
     try:
         user_id = request.get_user_id()
         activity_id = request.get_activity_id()
+
+        # Validate required fields
+        if user_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Missing user_id",
+                    "message": "Request must include 'user_id' or 'userId' field",
+                    "example": {"user_id": "your_email@example.com"},
+                    "help": "GET /api/v1/api-guide"
+                }
+            )
+        if activity_id == "unknown":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Missing activity_id",
+                    "message": "Request must include 'activity_id' or 'activityId' field",
+                    "example": {"activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f"},
+                    "important": "Use activity.id (UUID), NOT activity.foreign_id",
+                    "help": "GET /api/v1/api-guide"
+                }
+            )
 
         print(f"💙 Reaction request: user={user_id}, activity={activity_id}, kind={request.kind}")
 
@@ -842,26 +1097,40 @@ async def add_reaction(request: ReactionRequest):
             data=request.data
         )
 
-        return {
-            "success": True,
-            "reaction": reaction,
-            "message": f"Reaction '{request.kind}' added successfully"
-        }
+        return ReactionResponse(
+            success=True,
+            reaction=reaction,
+            message=f"Reaction '{request.kind}' added successfully"
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         error_msg = str(e)
         print(f"❌ Reaction failed: {error_msg}")
 
-        # Return more detailed error
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "Failed to add reaction",
-                "message": error_msg,
+        # Provide helpful error message
+        detail = {
+            "error": "Failed to add reaction",
+            "message": error_msg,
+            "request": {
                 "activity_id": request.get_activity_id(),
                 "user_id": request.get_user_id(),
                 "kind": request.kind
+            },
+            "help": "GET /api/v1/api-guide for troubleshooting"
+        }
+
+        # Add specific guidance for common errors
+        if "must be a valid UUID" in error_msg:
+            detail["common_mistake"] = {
+                "issue": "Wrong activity_id format",
+                "you_sent": request.get_activity_id(),
+                "should_be": "UUID like 'b227dc00-fb1f-11f0-8080-8001429e601f'",
+                "solution": "Use activity.id (NOT activity.foreign_id)"
             }
-        )
+
+        raise HTTPException(status_code=500, detail=detail)
 
 
 @router.delete("/reactions/{reaction_id}")
