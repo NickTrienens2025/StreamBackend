@@ -1221,6 +1221,7 @@ async def get_personalized_feed(
     - User's own reactions (own_reactions)
     - Reaction counts (reaction_counts)
     - Whether the user has liked each activity
+    - View count for each activity
 
     **Example:**
     - `GET /api/v1/feeds/nhl/personalized?user_id=user123&limit=50`
@@ -1234,17 +1235,35 @@ async def get_personalized_feed(
             limit=limit
         )
 
-        # Get user's engagement profile for additional personalization
+        # Get user's engagement profile and impressions for view counts
         from app.analytics import get_analytics_tracker
         tracker = get_analytics_tracker()
         profile = await tracker.get_user_engagement_profile(user_id)
+        impressions_data = await tracker.get_user_impressions(user_id)
+        impressions = impressions_data.get('impressions', {})
+
+        # Enrich activities with view_count
+        activities = result.get('results', [])
+        for activity in activities:
+            activity_id = activity.get('id')  # GetStream UUID
+            foreign_id = activity.get('foreign_id')  # Custom ID like "goal:xxx"
+
+            # Check for view_count using both id and foreign_id
+            # (impressions might be tracked with either depending on what the iOS app sends)
+            view_count = 0
+            if activity_id and activity_id in impressions:
+                view_count = impressions[activity_id].get('view_count', 0)
+            elif foreign_id and foreign_id in impressions:
+                view_count = impressions[foreign_id].get('view_count', 0)
+
+            activity['view_count'] = view_count
 
         return {
             "success": True,
             "feed": f"{feed_group}:{feed_id}",
             "user_id": user_id,
-            "count": len(result.get('results', [])),
-            "data": result.get('results', []),
+            "count": len(activities),
+            "data": activities,
             "next": result.get('next'),
             "personalization": {
                 "top_teams": profile.get('preferences', {}).get('teams', [])[:3],
