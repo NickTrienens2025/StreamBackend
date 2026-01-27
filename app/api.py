@@ -1242,7 +1242,7 @@ async def get_personalized_feed(
         impressions_data = await tracker.get_user_impressions(user_id)
         impressions = impressions_data.get('impressions', {})
 
-        # Enrich activities with view_count
+        # Enrich activities with view_count (only if > 0)
         activities = result.get('results', [])
         for activity in activities:
             activity_id = activity.get('id')  # GetStream UUID
@@ -1256,7 +1256,9 @@ async def get_personalized_feed(
             elif foreign_id and foreign_id in impressions:
                 view_count = impressions[foreign_id].get('view_count', 0)
 
-            activity['view_count'] = view_count
+            # Only include view_count if it's greater than 0
+            if view_count > 0:
+                activity['view_count'] = view_count
 
         return {
             "success": True,
