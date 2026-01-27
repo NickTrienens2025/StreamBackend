@@ -15,16 +15,36 @@ router = APIRouter()
 
 # Request models
 class ImpressionRequest(BaseModel):
-    user_id: str
-    activity_id: str
+    user_id: Optional[str] = None
+    userId: Optional[str] = None  # Support both snake_case and camelCase
+    activity_id: Optional[str] = None
+    activityId: Optional[str] = None  # Support both formats
     metadata: Optional[Dict[str, Any]] = None
+
+    def get_user_id(self) -> str:
+        """Get user_id from either format"""
+        return self.user_id or self.userId or "unknown"
+
+    def get_activity_id(self) -> str:
+        """Get activity_id from either format"""
+        return self.activity_id or self.activityId or "unknown"
 
 
 class ReactionRequest(BaseModel):
-    user_id: str
-    activity_id: str
+    user_id: Optional[str] = None
+    userId: Optional[str] = None  # Support both formats
+    activity_id: Optional[str] = None
+    activityId: Optional[str] = None  # Support both formats
     kind: str = "like"
     data: Optional[Dict[str, Any]] = None
+
+    def get_user_id(self) -> str:
+        """Get user_id from either format"""
+        return self.user_id or self.userId or "unknown"
+
+    def get_activity_id(self) -> str:
+        """Get activity_id from either format"""
+        return self.activity_id or self.activityId or "unknown"
 
 
 @router.get("/auth/default-user")
@@ -577,12 +597,30 @@ async def get_startup_scraper_history():
 
 # Analytics Endpoints
 
+@router.post("/analytics/debug")
+async def debug_analytics_request(request: Dict[str, Any] = Body(...)):
+    """
+    Debug endpoint to see raw request data from iOS app
+
+    **Example:**
+    - Send any JSON and it will echo back what was received
+    """
+    print(f"📋 Debug request received: {request}")
+    return {
+        "success": True,
+        "received": request,
+        "message": "Debug data received successfully"
+    }
+
+
 @router.post("/analytics/impression")
 async def track_impression(request: ImpressionRequest):
     """
     Track an impression (view) of an activity
 
     Called by the iOS app when an activity scrolls into view (60% visible).
+
+    Accepts both snake_case (user_id, activity_id) and camelCase (userId, activityId).
 
     **Example:**
     ```json
@@ -600,10 +638,16 @@ async def track_impression(request: ImpressionRequest):
     try:
         from app.analytics import get_analytics_tracker
 
+        user_id = request.get_user_id()
+        activity_id = request.get_activity_id()
+
+        # Debug logging
+        print(f"📊 Impression: user={user_id}, activity={activity_id}")
+
         tracker = get_analytics_tracker()
         success = await tracker.track_impression(
-            user_id=request.user_id,
-            activity_id=request.activity_id,
+            user_id=user_id,
+            activity_id=activity_id,
             metadata=request.metadata
         )
 
@@ -612,6 +656,7 @@ async def track_impression(request: ImpressionRequest):
             "message": "Impression tracked" if success else "Failed to track impression"
         }
     except Exception as e:
+        print(f"❌ Impression tracking error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to track impression: {str(e)}")
 
 
@@ -634,9 +679,9 @@ async def track_reaction_legacy(request: ReactionRequest):
     """
     try:
         reaction = await stream_client.add_reaction(
-            user_id=request.user_id,
+            user_id=request.get_user_id(),
             kind=request.kind,
-            activity_id=request.activity_id,
+            activity_id=request.get_activity_id(),
             data=request.data
         )
 
@@ -713,9 +758,9 @@ async def add_reaction(request: ReactionRequest):
     """
     try:
         reaction = await stream_client.add_reaction(
-            user_id=request.user_id,
+            user_id=request.get_user_id(),
             kind=request.kind,
-            activity_id=request.activity_id,
+            activity_id=request.get_activity_id(),
             data=request.data
         )
 
