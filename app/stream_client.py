@@ -3,8 +3,31 @@ GetStream client wrapper
 Provides methods for interacting with Activity Feeds
 """
 from typing import List, Dict, Any, Optional
+import re
 from stream.client import StreamClient as GetStreamClient
 from app.config import settings
+
+
+def sanitize_user_id(user_id: str) -> str:
+    """
+    Sanitize user ID to be GetStream compatible
+
+    GetStream user IDs cannot contain special characters like @, ., etc.
+
+    Args:
+        user_id: Raw user ID (may be email)
+
+    Returns:
+        Sanitized user ID safe for GetStream
+    """
+    # Replace @ with _at_
+    sanitized = user_id.replace('@', '_at_')
+    # Replace . with _
+    sanitized = sanitized.replace('.', '_')
+    # Remove any other non-alphanumeric characters except _ and -
+    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', sanitized)
+
+    return sanitized
 
 
 class StreamClient:
@@ -200,22 +223,26 @@ class StreamClient:
         Add a reaction to an activity
 
         Args:
-            user_id: User adding the reaction
+            user_id: User adding the reaction (will be sanitized)
             kind: Reaction type (e.g., 'like', 'heart', 'comment')
-            activity_id: Activity ID
+            activity_id: Activity ID (must be GetStream UUID, not foreign_id)
             data: Optional additional data
 
         Returns:
             Created reaction
         """
         try:
-            print(f"🎯 Adding reaction: kind={kind}, activity={activity_id}, user={user_id}")
+            # Sanitize user_id to remove special characters
+            sanitized_user_id = sanitize_user_id(user_id)
+
+            print(f"🎯 Adding reaction: kind={kind}, activity={activity_id}")
+            print(f"   User: {user_id} → {sanitized_user_id}")
 
             # GetStream SDK: reactions.add(kind, activity_id, user_id, data={}, target_feeds=[])
             response = self.client.reactions.add(
                 kind=kind,
                 activity_id=activity_id,
-                user_id=user_id,
+                user_id=sanitized_user_id,
                 data=data or {}
             )
 
@@ -223,11 +250,25 @@ class StreamClient:
             return response
 
         except Exception as e:
-            print(f"❌ Failed to add reaction: {str(e)}")
+            error_msg = str(e)
+            print(f"❌ Failed to add reaction: {error_msg}")
             print(f"   Activity ID: {activity_id}")
-            print(f"   User ID: {user_id}")
+            print(f"   User ID: {user_id} (sanitized: {sanitize_user_id(user_id)})")
             print(f"   Kind: {kind}")
-            raise Exception(f"GetStream reaction error: {str(e)}")
+
+            # Provide helpful error message
+            if "must be a valid UUID" in error_msg:
+                raise Exception(
+                    f"GetStream error: activity_id must be the GetStream UUID (id field), "
+                    f"not the foreign_id. Got: {activity_id}"
+                )
+            elif "invalid characters" in error_msg:
+                raise Exception(
+                    f"GetStream error: user_id contains invalid characters. "
+                    f"Original: {user_id}, Sanitized: {sanitize_user_id(user_id)}"
+                )
+            else:
+                raise Exception(f"GetStream reaction error: {error_msg}")
 
     async def remove_reaction(self, reaction_id: str) -> bool:
         """
@@ -288,14 +329,15 @@ class StreamClient:
         Get a user's specific reaction on an activity
 
         Args:
-            user_id: User ID
+            user_id: User ID (will be sanitized)
             activity_id: Activity ID
             kind: Reaction kind
 
         Returns:
             Reaction if exists, None otherwise
         """
-        reactions = await self.get_reactions(activity_id, kind=kind, user_id=user_id)
+        sanitized_user_id = sanitize_user_id(user_id)
+        reactions = await self.get_reactions(activity_id, kind=kind, user_id=sanitized_user_id)
         return reactions[0] if reactions else None
 
     async def get_activities_with_reactions(
@@ -312,13 +354,16 @@ class StreamClient:
         Args:
             feed_group: Feed group name
             feed_id: Feed ID
-            user_id: User ID to get reactions for
+            user_id: User ID to get reactions for (will be sanitized)
             limit: Number of activities
             offset: Pagination offset
 
         Returns:
             Activities with reaction data
         """
+        # Sanitize user_id
+        sanitized_user_id = sanitize_user_id(user_id)
+
         # Get activities with enrichment
         feed = self.get_feed(feed_group, feed_id)
 
@@ -331,7 +376,7 @@ class StreamClient:
                 'own': True,
                 'counts': True
             },
-            'user_id': user_id  # Important for own_reactions
+            'user_id': sanitized_user_id  # Important for own_reactions
         }
 
         response = feed.get(**options)

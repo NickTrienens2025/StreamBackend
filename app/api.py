@@ -758,6 +758,63 @@ async def get_user_impressions(user_id: str = Path(...)):
 
 # Reactions Endpoints
 
+@router.get("/reactions/help")
+async def reactions_help():
+    """
+    Get help on how to use reactions API correctly
+
+    Returns guidance on the correct format for activity_id and user_id.
+    """
+    return {
+        "success": True,
+        "message": "Reactions API Usage Guide",
+        "requirements": {
+            "activity_id": {
+                "description": "Must be GetStream's internal UUID, not the foreign_id",
+                "correct": "Use activity.id (looks like 'b227dc00-fb1f-11f0-8080-8001429e601f')",
+                "incorrect": "Do NOT use activity.foreign_id (like 'goal:2025020829_576')",
+                "how_to_get": "When you fetch activities from the feed, use the 'id' field"
+            },
+            "user_id": {
+                "description": "Cannot contain special characters like @, ., etc.",
+                "correct_examples": [
+                    "ntrienens_at_nhl_com",
+                    "user123",
+                    "john_doe"
+                ],
+                "incorrect_examples": [
+                    "ntrienens@nhl.com",
+                    "user.name@example.com"
+                ],
+                "sanitization": "Backend will auto-sanitize: @ → _at_, . → _"
+            }
+        },
+        "example_request": {
+            "url": "POST /api/v1/reactions/add",
+            "body": {
+                "user_id": "ntrienens@nhl.com",
+                "activity_id": "b227dc00-fb1f-11f0-8080-8001429e601f",
+                "kind": "like"
+            },
+            "note": "Backend will sanitize user_id automatically"
+        },
+        "swift_example": """
+// Get the GetStream UUID from activity
+let activityId = activity.id  // ✅ Use this
+// NOT: activity.foreignId     // ❌ Don't use this
+
+// Sanitize user ID (or let backend do it)
+let userId = "ntrienens@nhl.com"  // Backend will sanitize
+
+let body: [String: Any] = [
+    "user_id": userId,
+    "activity_id": activityId,  // Must be the UUID
+    "kind": "like"
+]
+"""
+    }
+
+
 @router.post("/reactions/add")
 async def add_reaction(request: ReactionRequest):
     """
