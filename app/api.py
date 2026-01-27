@@ -391,7 +391,7 @@ async def get_filter_options():
         'EDM', 'FLA', 'LAK', 'MIN', 'MTL', 'NJD', 'NSH', 'NYI', 'NYR', 'OTT',
         'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR', 'VAN', 'VGK', 'WPG', 'WSH'
     ]
-    
+
     return {
         "success": True,
         "groups": [
@@ -445,3 +445,60 @@ async def get_filter_options():
             {"label": "Most Important", "id": "score", "default": False}
         ]
     }
+
+
+# Scraper Endpoints
+
+@router.post("/scraper/check-for-new-goals")
+async def check_for_new_goals_endpoint(
+    days_back: int = Query(3, ge=1, le=7, description="Number of days to look back"),
+    force_refresh: bool = Query(False, description="Force re-scrape of completed days")
+):
+    """
+    Check for new NHL goals and upload them to GetStream
+    Only marks days as complete when all games are finished
+
+    This endpoint should be called when the app starts the feed experience
+    to ensure the latest data is available.
+
+    **Example:**
+    - `POST /api/v1/scraper/check-for-new-goals` - Check last 3 days
+    - `POST /api/v1/scraper/check-for-new-goals?days_back=5` - Check last 5 days
+    - `POST /api/v1/scraper/check-for-new-goals?force_refresh=true` - Force refresh all days
+    """
+    try:
+        from app.scraper_on_demand import check_for_new_goals
+
+        results = await check_for_new_goals(days_back=days_back, force_refresh=force_refresh)
+
+        return {
+            "success": True,
+            "message": "Goal check completed",
+            "results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check for new goals: {str(e)}")
+
+
+@router.get("/scraper/game-status/{date}")
+async def get_game_status(
+    date: str = Path(..., description="Date in YYYY-MM-DD format")
+):
+    """
+    Check if all games on a specific date are finished
+
+    **Example:**
+    - `GET /api/v1/scraper/game-status/2026-01-27` - Check game status for date
+    """
+    try:
+        from app.scraper_on_demand import are_all_games_finished
+
+        status = await are_all_games_finished(date)
+
+        return {
+            "success": True,
+            "date": date,
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check game status: {str(e)}")

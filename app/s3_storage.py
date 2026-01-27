@@ -125,6 +125,7 @@ class S3Storage:
         # Return default progress structure
         return {
             'completed_dates': [],
+            'in_progress_dates': [],
             'failed_dates': [],
             'last_updated': None,
             'stats': {

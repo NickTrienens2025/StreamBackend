@@ -839,6 +839,11 @@ class NHLScraperCron:
                 # Game context
                 'game_id': str(game['id']),
                 'period': period_desc.get('number', 0),
+                'period_type': period_desc.get('periodType', 'REG'),
+
+                # Timing context
+                'time_in_period': play.get('timeInPeriod', '00:00'),
+                'time_remaining': play.get('timeRemaining', '00:00'),
 
                 # Score context
                 'home_score': home_score,
