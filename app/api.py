@@ -458,19 +458,18 @@ async def get_filter_options():
 
 @router.post("/scraper/check-for-new-goals")
 async def check_for_new_goals_endpoint(
-    days_back: int = Query(3, ge=1, le=7, description="Number of days to look back"),
+    days_back: int = Query(3, ge=1, le=7, description="Fallback days to look back if no progress exists"),
     force_refresh: bool = Query(False, description="Force re-scrape of completed days")
 ):
     """
     Check for new NHL goals and upload them to GetStream
     Only marks days as complete when all games are finished
 
-    This endpoint should be called when the app starts the feed experience
-    to ensure the latest data is available.
+    Automatically checks all days since the last recorded goal.
+    Falls back to days_back if no prior progress exists.
 
     **Example:**
-    - `POST /api/v1/scraper/check-for-new-goals` - Check last 3 days
-    - `POST /api/v1/scraper/check-for-new-goals?days_back=5` - Check last 5 days
+    - `POST /api/v1/scraper/check-for-new-goals` - Check since last recorded goal
     - `POST /api/v1/scraper/check-for-new-goals?force_refresh=true` - Force refresh all days
     """
     try:

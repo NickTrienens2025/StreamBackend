@@ -122,8 +122,11 @@ async def check_for_new_goals(days_back: int = 3, force_refresh: bool = False) -
     Check for new goals and upload them
     Only marks days as complete when all games are finished
 
+    Checks all days since the last recorded goal in S3 progress.
+    Falls back to days_back if no progress exists.
+
     Args:
-        days_back: Number of days to look back (default 3)
+        days_back: Fallback number of days to look back if no progress exists (default 3)
         force_refresh: If True, re-scrape even completed days
 
     Returns:
@@ -148,8 +151,30 @@ async def check_for_new_goals(days_back: int = 3, force_refresh: bool = False) -
         completed_dates = set(progress.get('completed_dates', []))
         in_progress_dates = set(progress.get('in_progress_dates', []))
 
-        # Get dates to check
-        dates_to_check = get_recent_dates(days_back)
+        # Determine start date from last recorded progress
+        all_known_dates = sorted(completed_dates | in_progress_dates)
+        if all_known_dates:
+            last_date = datetime.strptime(all_known_dates[-1], '%Y-%m-%d').date()
+            start_date = last_date + timedelta(days=1)
+            print(f"📅 Last recorded date: {all_known_dates[-1]}, checking from {start_date}")
+        else:
+            start_date = date.today() - timedelta(days=days_back)
+            print(f"📅 No progress found, falling back to last {days_back} days")
+
+        # Generate all dates from start_date to today
+        today = date.today()
+        dates_to_check = []
+        current = start_date
+        while current <= today:
+            dates_to_check.append(current.strftime('%Y-%m-%d'))
+            current += timedelta(days=1)
+
+        # Also re-check any in-progress dates (games may have finished)
+        for d in sorted(in_progress_dates):
+            if d not in dates_to_check:
+                dates_to_check.insert(0, d)
+
+        print(f"📅 Dates to check: {len(dates_to_check)}")
 
         results = {
             'checked': 0,

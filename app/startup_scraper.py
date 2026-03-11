@@ -34,7 +34,7 @@ async def run_startup_scraper(days_back: int = 3) -> Dict[str, Any]:
         # Save initial status
         await s3_storage.write('scraper_startup_status.json', startup_status)
 
-        print(f"\n🚀 Starting up - checking for new goals (last {days_back} days)...")
+        print(f"\n🚀 Starting up - checking for new goals since last recorded...")
 
         # Run the scraper
         results = await check_for_new_goals(days_back=days_back, force_refresh=False)
