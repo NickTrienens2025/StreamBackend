@@ -151,30 +151,29 @@ async def check_for_new_goals(days_back: int = 3, force_refresh: bool = False) -
         completed_dates = set(progress.get('completed_dates', []))
         in_progress_dates = set(progress.get('in_progress_dates', []))
 
-        # Determine start date from last recorded progress
+        # Determine start date from earliest recorded progress
         all_known_dates = sorted(completed_dates | in_progress_dates)
         if all_known_dates:
-            last_date = datetime.strptime(all_known_dates[-1], '%Y-%m-%d').date()
-            start_date = last_date + timedelta(days=1)
-            print(f"📅 Last recorded date: {all_known_dates[-1]}, checking from {start_date}")
+            earliest_date = datetime.strptime(all_known_dates[0], '%Y-%m-%d').date()
+            latest_date = datetime.strptime(all_known_dates[-1], '%Y-%m-%d').date()
+            print(f"📅 Progress range: {earliest_date} to {latest_date}")
         else:
-            start_date = date.today() - timedelta(days=days_back)
+            earliest_date = date.today() - timedelta(days=days_back)
+            latest_date = date.today() - timedelta(days=1)
             print(f"📅 No progress found, falling back to last {days_back} days")
 
-        # Generate all dates from start_date to today
+        # Generate all dates from earliest known date to today
+        # This fills any gaps in the middle AND catches new dates
         today = date.today()
         dates_to_check = []
-        current = start_date
+        current = earliest_date
         while current <= today:
-            dates_to_check.append(current.strftime('%Y-%m-%d'))
+            date_str = current.strftime('%Y-%m-%d')
+            if date_str not in completed_dates or force_refresh:
+                dates_to_check.append(date_str)
             current += timedelta(days=1)
 
-        # Also re-check any in-progress dates (games may have finished)
-        for d in sorted(in_progress_dates):
-            if d not in dates_to_check:
-                dates_to_check.insert(0, d)
-
-        print(f"📅 Dates to check: {len(dates_to_check)}")
+        print(f"📅 Dates to check: {len(dates_to_check)} ({len(completed_dates)} already completed)")
 
         results = {
             'checked': 0,
